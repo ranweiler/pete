@@ -6,7 +6,6 @@ use nix::{
         signal::Signal,
         wait::{self, WaitPidFlag, WaitStatus},
     },
-    unistd::Pid,
 };
 
 use crate::{
@@ -15,7 +14,8 @@ use crate::{
 };
 
 
-pub use ptrace::Options;
+pub use nix::unistd::Pid;
+pub use nix::sys::ptrace::Options;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 

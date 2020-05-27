@@ -1,6 +1,6 @@
 [package]
 name = "pete"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Joe Ranweiler <joe@lemma.co>"]
 edition = "2018"
 license = "ISC"

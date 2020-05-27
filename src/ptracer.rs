@@ -5,7 +5,6 @@ use nix::sys::{
     wait::{self, WaitPidFlag, WaitStatus},
 };
 
-
 use crate::{
     cmd::Command,
     error::{Error, Result},
@@ -15,6 +14,8 @@ use crate::{
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
 pub use nix::sys::signal::Signal;
+
+pub type Registers = libc::user_regs_struct;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
@@ -82,6 +83,14 @@ impl Tracee {
     pub fn suppress(mut self) -> Self {
         self.pending = None;
         self
+    }
+
+    pub fn registers(&self) -> Result<Registers> {
+        Ok(ptrace::getregs(self.pid)?)
+    }
+
+    pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
+        Ok(ptrace::setregs(self.pid, regs)?)
     }
 }
 

@@ -1,12 +1,10 @@
 use std::collections::BTreeMap;
 
-use nix::{
-    sys::{
-        ptrace,
-        signal::Signal,
-        wait::{self, WaitPidFlag, WaitStatus},
-    },
+use nix::sys::{
+    ptrace,
+    wait::{self, WaitPidFlag, WaitStatus},
 };
+
 
 use crate::{
     cmd::Command,
@@ -16,6 +14,7 @@ use crate::{
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
+pub use nix::sys::signal::Signal;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 

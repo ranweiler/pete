@@ -1,6 +1,4 @@
-use nix::unistd::Pid;
-
-use crate::ptracer::Restart;
+use crate::ptracer::{Pid, Restart};
 
 
 pub type Result<T> = std::result::Result<T, Error>;

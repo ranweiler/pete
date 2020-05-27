@@ -3,7 +3,7 @@ use std::env;
 
 use nix::sys::ptrace;
 
-use pete::ptracer::{Ptracer, Restart, Stop};
+use pete::{Ptracer, Restart, Stop};
 
 
 fn main() -> anyhow::Result<()> {

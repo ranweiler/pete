@@ -87,6 +87,11 @@ impl Tracee {
         self
     }
 
+    /// Set custom tracing options on the tracee.
+    pub fn set_options(&mut self, options: Options) -> Result<()> {
+        Ok(ptrace::setoptions(self.pid, options)?)
+    }
+
     pub fn registers(&self) -> Result<Registers> {
         Ok(ptrace::getregs(self.pid)?)
     }
@@ -199,9 +204,10 @@ impl Ptracer {
 
         self.set_tracee_state(pid, State::Attaching);
 
-        let tracee = self.wait().map(|t| t.unwrap())?;
+        let mut tracee = self.wait().map(|t| t.unwrap())?;
 
-        self.set_tracee_options(pid, self.options)?;
+        // Set global tracing options on root tracee.
+        tracee.set_options(self.options)?;
 
         // Suppress the pre-exec SIGSTOP, raised to avoid an attach race.
         tracee.suppress();
@@ -220,15 +226,6 @@ impl Ptracer {
         self.set_tracee_state(pid, State::Attaching);
 
         r
-    }
-
-    /// Set custom tracing options on a tracee `pid`.
-    ///
-    /// The task must be a tracee of the calling process, and in ptrace-stop.
-    pub fn set_tracee_options(&mut self, pid: Pid, options: Options) -> Result<()> {
-        ptrace::setoptions(pid, options)?;
-
-        Ok(())
     }
 
     /// Wait for some running tracee process to stop.

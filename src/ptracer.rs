@@ -17,6 +17,7 @@ pub use nix::sys::ptrace::Options;
 pub use nix::sys::signal::Signal;
 
 pub type Registers = libc::user_regs_struct;
+pub type Siginfo = libc::siginfo_t;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
@@ -126,6 +127,16 @@ impl Tracee {
     fn proc_mem_path(&self) -> String {
         let tid = self.pid.as_raw() as u32;
         format!("/proc/{}/mem", tid)
+    }
+
+    pub fn siginfo(&self) -> Result<Option<Siginfo>> {
+        let info = if let Stop::SignalDeliveryStop(..) = self.stop {
+            Some(ptrace::getsiginfo(self.pid)?)
+        } else {
+            None
+        };
+
+        Ok(info)
     }
 }
 

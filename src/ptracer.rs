@@ -299,18 +299,26 @@ impl Ptracer {
                         Tracee::new(pid, sig, stop)
                     },
                     PTRACE_EVENT_EXEC => {
+                        // We are in one of two cases. The exec has either occurred on the main
+                        // thread of the thread group, or not. In either case, the new tid of the
+                        // execing thread will be equal to the tgid. In the off-main case, this is
+                        // a change, and the old state for the tid == tgid will be invalid.
+
                         // The current `pid` is now equal to the tgid of `old_pid`.
                         let old_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
 
-                        let old_state = self.remove_tracee(old_pid);
+                        if old_pid != pid {
+                            // We exec'd off-thread, and previous tid state is now invalid.
+                            self.remove_tracee(old_pid);
+                        }
 
-                        let new_state = if old_pid == pid {
-                            old_state.unwrap_or(State::Traced)
-                        } else {
-                            State::Traced
-                        };
-
-                        self.set_tracee_state(pid, new_state);
+                        // We know we are in a syscall. Make sure we can correctly label the next
+                        // syscall-stop as an exit-stop.
+                        //
+                        // Important: if we trace all the syscall-stops, we will report the syscall-
+                        // enter-stop as occurring on `old_pid`, but its matching syscall-exit-stop
+                        // as occurring on `pid`. This is correct, but might look odd.
+                        self.set_tracee_state(pid, State::Syscalling);
 
                         let stop = Stop::Exec(old_pid, pid);
 

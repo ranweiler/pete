@@ -202,13 +202,12 @@ impl Ptracer {
 
         self.set_tracee_state(pid, State::Attaching);
 
+        // Wait on initial attach stop, which in this case is a synthetic SIGSTOP
+        // raised after forking and requesting TRACEME.
         let mut tracee = self.wait().map(|t| t.unwrap())?;
 
         // Set global tracing options on root tracee.
         tracee.set_options(self.options)?;
-
-        // Suppress the pre-exec SIGSTOP, raised to avoid an attach race.
-        tracee.suppress();
 
         Ok(tracee)
     }

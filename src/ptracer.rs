@@ -211,7 +211,8 @@ impl Ptracer {
 
     /// Attach to a running tracee. This will deliver a SIGSTOP.
     ///
-    /// Warning: this does not stop the tracee
+    /// Warning: the tracee may not be considered stopped until it has been seen
+    /// to stop via `wait()`.
     pub fn attach(&mut self, pid: Pid) -> Result<()> {
         let r = ptrace::attach(pid);
         let r = r.map_err(|source| Error::Attach { pid, source });

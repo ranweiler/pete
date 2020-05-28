@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 use std::env;
 
-use nix::sys::ptrace;
-
 use pete::{Ptracer, Restart, Stop};
 
 
@@ -12,12 +10,12 @@ fn main() -> anyhow::Result<()> {
     let argv = env::args().skip(1).collect();
     let mut ptracer = Ptracer::new();
 
-    // Tracee is in ptrace-stop.
+    // Tracee is in pre-exec ptrace-stop.
     let tracee = ptracer.spawn(argv)?;
     ptracer.restart(tracee, Restart::Syscall)?;
 
     while let Ok(Some(tracee)) = ptracer.wait() {
-        let regs = ptrace::getregs(tracee.pid)?;
+        let regs = tracee.registers()?;
         let pc = regs.rip as u64;
 
         match tracee.stop {

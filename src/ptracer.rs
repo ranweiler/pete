@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fs;
 
 use nix::sys::{
     ptrace,
@@ -91,6 +92,40 @@ impl Tracee {
 
     pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
         Ok(ptrace::setregs(self.pid, regs)?)
+    }
+
+    pub fn read_memory(&mut self, addr: u64, len: usize) -> Result<Vec<u8>> {
+        let mut data = Vec::with_capacity(len);
+        data.resize(len, 0);
+        let len_read = self.read_memory_mut(addr, &mut data)?;
+        data.truncate(len_read);
+        Ok(data)
+    }
+
+    pub fn read_memory_mut(&self, addr: u64, data: &mut [u8]) -> Result<usize> {
+        use std::os::unix::fs::FileExt;
+
+        let mem = fs::File::open(self.proc_mem_path())?;
+        let len = mem.read_at(data, addr)?;
+        Ok(len)
+    }
+
+    pub fn write_memory(&mut self, addr: u64, data: &[u8]) -> Result<usize> {
+        use std::os::unix::fs::FileExt;
+
+        let mem = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(self.proc_mem_path())?;
+
+        let len = mem.write_at(data, addr)?;
+
+        Ok(len)
+    }
+
+    fn proc_mem_path(&self) -> String {
+        let tid = self.pid.as_raw() as u32;
+        format!("/proc/{}/mem", tid)
     }
 }
 

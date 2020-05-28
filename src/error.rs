@@ -1,3 +1,5 @@
+use std::io;
+
 use crate::ptracer::{Pid, Restart};
 
 
@@ -16,6 +18,9 @@ pub enum Error {
 
     #[error("Could not restart tracee = {pid} with mode = {mode:?}")]
     Restart { pid: Pid, mode: Restart, source: nix::Error },
+
+    #[error("Input/output error")]
+    InputOutput(#[from] io::Error),
 
     #[error("Unexpected internal error")]
     Internal(#[from] nix::Error),

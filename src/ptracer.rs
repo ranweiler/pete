@@ -76,15 +76,13 @@ impl Tracee {
     }
 
     /// Set a signal to deliver to the stopped process upon restart.
-    pub fn inject(mut self, pending: Signal) -> Self {
+    pub fn inject(&mut self, pending: Signal) {
         self.pending = Some(pending);
-        self
     }
 
     /// Remove any signal scheduled for delivery to `pid` upon restart.
-    pub fn suppress(mut self) -> Self {
+    pub fn suppress(&mut self) {
         self.pending = None;
-        self
     }
 
     /// Set custom tracing options on the tracee.

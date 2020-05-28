@@ -13,7 +13,7 @@ pub enum Error {
         source: nix::Error,
     },
 
-    #[error("Error waiting for new status from tracees")]
+    #[error("Error waiting on tracees")]
     Wait { source: nix::Error },
 
     #[error("Could not restart tracee = {pid} with mode = {mode:?}")]

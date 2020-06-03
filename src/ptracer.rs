@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
+use std::marker::PhantomData;
 
 use nix::sys::{
     ptrace,
@@ -66,13 +67,16 @@ pub struct Tracee {
     pub pid: Pid,
     pub pending: Option<Signal>,
     pub stop: Stop,
+
+    pub _not_send: PhantomData<*const ()>,
 }
 
 impl Tracee {
     pub fn new(pid: Pid, pending: impl Into<Option<Signal>>, stop: Stop) -> Self {
         let pending = pending.into();
+        let _not_send = PhantomData;
 
-        Self { pid, pending, stop }
+        Self { pid, pending, stop, _not_send }
     }
 
     /// Set a signal to deliver to the stopped process upon restart.

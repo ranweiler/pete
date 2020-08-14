@@ -1,4 +1,6 @@
-use std::ffi::{CString, NulError};
+use std::collections::HashMap;
+use std::ffi::{CString, NulError, OsStr, OsString};
+use std::os::raw::c_char;
 
 use nix::{
     sys::{signal::{raise, Signal}, ptrace},
@@ -18,6 +20,11 @@ pub struct Command {
     ///
     /// Defaults to `true`.
     trace_me: bool,
+
+    /// Environment to use for the child process.
+    ///
+    /// Inherits the parent's environment by default.
+    env: OsEnv,
 }
 
 impl Command {
@@ -35,7 +42,13 @@ impl Command {
             .collect();
         let argv = argv?;
 
-        Ok(Self { argv, trace_me: true })
+        let env = OsEnv::new()?;
+
+        Ok(Self { argv, env, trace_me: true })
+    }
+
+    pub fn env(&mut self) -> &mut OsEnv {
+        &mut self.env
     }
 
     /// Set the value of the `trace_me` flag.
@@ -49,8 +62,10 @@ impl Command {
     /// If `self.trace_me`, the child process will set itself as a tracee of the parent,
     /// then raise `SIGSTOP` so the parent can resume and observe it without a race.
     pub fn fork_exec(self) -> Result<Pid, Error> {
-        // Heap-allocates, must occur pre-fork.
-        let argv = self.argv();
+        // These calls heap-allocate, and must occur pre-fork.
+        let argv = NullTerminatedPointerArray::new(&self.argv);
+        let env = self.env.as_vec();
+        let env = NullTerminatedPointerArray::new(&env);
 
         match fork()? {
             ForkResult::Child => {
@@ -68,7 +83,7 @@ impl Command {
                 // Use unsafe `libc::execv`, because the `nix` wrapper heap- allocates a
                 // `Vec` internally, which is not async-signal-safe.
                 unsafe {
-                    if 0 != libc::execv(argv[0], argv.as_ptr()) {
+                    if 0 != libc::execve(&*argv[0], argv.as_ptr(), env.as_ptr()) {
                         panic!("Unable to exec tracee");
                     }
                 }
@@ -80,15 +95,86 @@ impl Command {
             },
         }
     }
+}
 
-    // Construct NUL-terminated arguments for `execv`. We heap-allocate to return a `Vec`,
-    // and so must do this before calling `fork()`.
-    fn argv(&self) -> Vec<*const libc::c_char> {
-        let mut argv: Vec<_> = self.argv
+#[derive(Clone, Debug)]
+pub struct OsEnv {
+    kvs: HashMap<OsString, CString>,
+}
+
+impl OsEnv {
+    pub fn new() -> Result<Self, NulError> {
+        let kvs = HashMap::new();
+        let mut env = Self { kvs };
+
+        // Inherit parent environment by default.
+        for (key, val) in std::env::vars_os() {
+            OsEnv::set(&mut env, key, val)?;
+        }
+
+        Ok(env)
+    }
+
+    pub fn set<K, V>(&mut self, key: K, val: V) -> Result<(), NulError>
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        use std::os::unix::ffi::OsStrExt;
+
+        let key = key.as_ref();
+        let val = val.as_ref();
+
+        // Create an `OsString` of the form `${key}=${value}`.
+        let mut kv = OsString::new();
+        kv.push(key);
+        kv.push("=");
+        kv.push(val);
+
+        // NUL-terminate the KV string.
+        let kv = CString::new(kv.as_bytes())?;
+
+        self.kvs.insert(key.to_owned(), kv);
+
+        Ok(())
+    }
+
+    pub fn clear(&mut self) {
+        self.kvs.clear();
+    }
+
+    pub fn as_vec(&self) -> Vec<CString> {
+        self.kvs.values().cloned().collect()
+    }
+}
+
+// View of a slice of `CString` values, as a null-terminated array of pointers to
+// `c_char`. For passing args to `execve()`.
+struct NullTerminatedPointerArray<'a> {
+    // Owned pointer array which must always be NULL-terminated.
+    array: Vec<*const libc::c_char>,
+
+    // Borrow of pointed-to `CString` data. Pointers in `array` are valid only
+    // while we have this borrow.
+    _data: &'a [CString],
+}
+
+impl<'a> NullTerminatedPointerArray<'a> {
+    pub fn new(data: &'a [CString]) -> Self {
+        let mut array: Vec<_> = data
             .iter()
             .map(|s| s.as_ptr())
             .collect();
-        argv.push(std::ptr::null());
-        argv
+        array.push(std::ptr::null());
+
+        Self { array, _data: data }
+    }
+}
+
+impl<'a> std::ops::Deref for NullTerminatedPointerArray<'a> {
+    type Target = [*const c_char];
+
+    fn deref(&self) -> &Self::Target {
+        &self.array
     }
 }

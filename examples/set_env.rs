@@ -5,7 +5,8 @@ use pete::{Command, Ptracer, Restart};
 
 fn main() -> anyhow::Result<()> {
     let argv = env::args().skip(1).collect();
-    let cmd = Command::new(argv)?;
+    let mut cmd = Command::new(argv)?;
+    cmd.env().set("HELLO", "world")?;
 
     let mut ptracer = Ptracer::new();
 

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::{CString, NulError, OsString};
+use std::ffi::{CString, NulError, OsStr, OsString};
 use std::os::raw::c_char;
 
 use nix::{
@@ -117,24 +117,24 @@ impl OsEnv {
 
     pub fn set<K, V>(&mut self, key: K, val: V) -> Result<(), NulError>
     where
-        K: Into<OsString>,
-        V: Into<OsString>,
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
     {
         use std::os::unix::ffi::OsStrExt;
 
-        let key = key.into();
-        let val = val.into();
+        let key = key.as_ref();
+        let val = val.as_ref();
 
         // Create an `OsString` of the form `${key}=${value}`.
         let mut kv = OsString::new();
-        kv.push(&key);
+        kv.push(key);
         kv.push("=");
         kv.push(val);
 
         // NUL-terminate the KV string.
         let kv = CString::new(kv.as_bytes())?;
 
-        self.kvs.insert(key, kv);
+        self.kvs.insert(key.to_owned(), kv);
 
         Ok(())
     }

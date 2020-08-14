@@ -139,6 +139,10 @@ impl OsEnv {
         Ok(())
     }
 
+    pub fn clear(&mut self) {
+        self.kvs.clear();
+    }
+
     pub fn as_vec(&self) -> Vec<CString> {
         self.kvs.values().cloned().collect()
     }

@@ -1,17 +1,19 @@
 use std::collections::BTreeMap;
 use std::env;
 
-use pete::{Ptracer, Restart, Stop};
+use pete::{Command, Ptracer, Restart, Stop};
 
 
 fn main() -> anyhow::Result<()> {
     let syscalls = load_syscalls();
 
     let argv = env::args().skip(1).collect();
+    let cmd = Command::new(argv)?;
+
     let mut ptracer = Ptracer::new();
 
     // Tracee is in pre-exec ptrace-stop.
-    let tracee = ptracer.spawn(argv)?;
+    let tracee = ptracer.spawn(cmd)?;
     ptracer.restart(tracee, Restart::Syscall)?;
 
     while let Ok(Some(tracee)) = ptracer.wait() {

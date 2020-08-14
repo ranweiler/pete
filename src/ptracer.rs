@@ -197,12 +197,9 @@ impl Ptracer {
         })
     }
 
-    pub fn spawn(&mut self, argv: Vec<String>) -> Result<Tracee> {
+    pub fn spawn(&mut self, cmd: Command) -> Result<Tracee> {
         // Fork, request TRACEME, raise a pre-exec SIGSTOP.
-        let pid = Command::new(argv)
-            .expect("argv strings should be NUL-free")
-            .trace_me(true)
-            .fork_exec()?;
+        let pid = cmd.trace_me(true).fork_exec()?;
 
         self.set_tracee_state(pid, State::Attaching);
 

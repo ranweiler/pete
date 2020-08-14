@@ -47,13 +47,8 @@ impl Command {
         Ok(Self { argv, env, trace_me: true })
     }
 
-    pub fn env<K, V>(&mut self, key: K, val: V) -> Result<&mut Command, NulError>
-    where
-        K: Into<OsString>,
-        V: Into<OsString>,
-    {
-        self.env.set(key, val)?;
-        Ok(self)
+    pub fn env(&mut self) -> &mut OsEnv {
+        &mut self.env
     }
 
     /// Set the value of the `trace_me` flag.
@@ -103,7 +98,7 @@ impl Command {
 }
 
 #[derive(Clone, Debug)]
-struct OsEnv {
+pub struct OsEnv {
     kvs: HashMap<OsString, CString>,
 }
 

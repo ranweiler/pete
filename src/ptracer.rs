@@ -409,10 +409,21 @@ impl Ptracer {
                                 Stop::SyscallEnterStop(pid)
                             },
                             State::Attaching => {
-                                // A tracee in this state is waiting for a `SIGSTOP`, which is an
-                                // artifact of `PTRACE_ATTACH`. The next wait status will thus be
-                                // either a `SIGSTOP`, `SIGKILL`, or a `PTRACE_EVENT_EXIT`.
-                                unreachable!()
+                                // This could happen for two reasons:
+                                //
+                                // 1. The process is crashing right after a fork
+                                //    (perhaps due to a `SIKILL`)
+                                //
+                                // 2. A race where the tracee issued a syscall
+                                //    before we finished attaching.
+                                //
+                                // In the first case we don't really have to do
+                                // anything since it is about to crash.  In the
+                                // second case, we want to treat it like it is
+                                // definitely entering a syscall (since we will
+                                // see the enter before the exit)
+                                *state = State::Syscalling;
+                                Stop::SyscallEnterStop(pid)
                             },
                         }
                     },

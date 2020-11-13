@@ -231,7 +231,7 @@ impl Ptracer {
         self.set_tracee_state(pid, State::Traced);
 
         // Set global tracing options on root tracee.
-        let mut tracee = Tracee::new(pid, None, Stop::AttachStop(pid));
+        let mut tracee = Tracee::new(pid, Some(Signal::SIGTRAP), Stop::AttachStop(pid));
         tracee.set_options(self.options)?;
 
         Ok(tracee)

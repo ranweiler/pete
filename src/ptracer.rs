@@ -343,6 +343,7 @@ impl Ptracer {
                     },
                     PTRACE_EVENT_VFORK => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        self.set_tracee_state(new_pid, State::Attaching);
                         let stop = Stop::Vfork(pid, new_pid);
 
                         Tracee::new(pid, sig, stop)

@@ -226,6 +226,19 @@ impl Ptracer {
         r
     }
 
+    pub fn add_spawned(&mut self, pid: Pid) -> Result<Tracee> {
+        self.mark_tracee(pid);
+
+        // Wait on initial attach stop, which in this case is a synthetic SIGSTOP
+        // raised after forking and requesting TRACEME.
+        let mut tracee = self.wait().map(|t| t.unwrap())?;
+
+        // Set global tracing options on root tracee.
+        tracee.set_options(self.options)?;
+
+        Ok(tracee)
+    }
+
     /// Wait for some running tracee process to stop.
     pub fn wait(&mut self) -> Result<Option<Tracee>> {
         use Signal::*;

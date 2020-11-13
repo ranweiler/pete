@@ -228,6 +228,7 @@ impl Ptracer {
 
     pub fn add_spawned(&mut self, pid: Pid) -> Result<Tracee> {
         self.mark_tracee(pid);
+        self.set_tracee_state(pid, State::Traced);
 
         // Set global tracing options on root tracee.
         let mut tracee = Tracee::new(pid, None, Stop::AttachStop(pid));

@@ -226,13 +226,14 @@ impl Ptracer {
         r
     }
 
-    pub fn add_spawned(&mut self, pid: Pid) -> Result<()> {
+    pub fn add_spawned(&mut self, pid: Pid) -> Result<Tracee> {
         self.mark_tracee(pid);
 
         // Set global tracing options on root tracee.
-        Tracee::new(pid, None, Stop::AttachStop(pid)).set_options(self.options)?;
+        let mut tracee = Tracee::new(pid, None, Stop::AttachStop(pid));
+        tracee.set_options(self.options)?;
 
-        Ok(())
+        Ok(tracee)
     }
 
     /// Wait for some running tracee process to stop.

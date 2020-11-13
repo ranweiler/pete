@@ -201,7 +201,7 @@ impl Ptracer {
         // Fork, request TRACEME, raise a pre-exec SIGSTOP.
         let pid = cmd.trace_me(true).fork_exec()?;
 
-        self.set_tracee_state(pid, State::Attaching);
+        self.mark_tracee(pid);
 
         // Wait on initial attach stop, which in this case is a synthetic SIGSTOP
         // raised after forking and requesting TRACEME.
@@ -221,7 +221,7 @@ impl Ptracer {
         let r = ptrace::attach(pid);
         let r = r.map_err(|source| Error::Attach { pid, source });
 
-        self.set_tracee_state(pid, State::Attaching);
+        self.mark_tracee(pid);
 
         r
     }
@@ -263,6 +263,16 @@ impl Ptracer {
                             return Ok(Some(tracee));
                         }
                     }
+                    else {
+                        // We may see an attach-stop out-of-order, before the ptrace-event-stop
+                        // which would otherwise have us mark it as `Attaching`. Since `Attaching`
+                        // only exists to let us know that the next stop (i.e. this stop) is an
+                        // attach-stop, we can directly initialize this tracee as `Traced`.
+                        self.set_tracee_state(pid, State::Traced);
+                        let stop = Stop::AttachStop(pid);
+                        let tracee = Tracee::new(pid, None, stop);
+                        return Ok(Some(tracee));
+                    }
                 }
 
                 let stop = if is_group_stop(pid, sig)? {
@@ -284,7 +294,7 @@ impl Ptracer {
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
                         // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
-                        self.set_tracee_state(new_pid, State::Attaching);
+                        self.mark_tracee(new_pid);
 
                         let stop = Stop::Fork(pid, new_pid);
                         Tracee::new(pid, sig, stop)
@@ -294,7 +304,7 @@ impl Ptracer {
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
                         // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
-                        self.set_tracee_state(new_pid, State::Attaching);
+                        self.mark_tracee(new_pid);
 
                         let stop = Stop::Clone(pid, new_pid);
                         Tracee::new(pid, sig, stop)
@@ -343,7 +353,8 @@ impl Ptracer {
                     },
                     PTRACE_EVENT_VFORK => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
-                        self.set_tracee_state(new_pid, State::Attaching);
+                        self.mark_tracee(new_pid);
+
                         let stop = Stop::Vfork(pid, new_pid);
 
                         Tracee::new(pid, sig, stop)
@@ -444,6 +455,11 @@ impl Ptracer {
 
     fn tracee_state_mut(&mut self, pid: Pid) -> Option<&mut State> {
         self.tracees.get_mut(&pid.as_raw())
+    }
+
+    // Mark `pid` as a new tracee pending attach-stop, if it isn't already known.
+    fn mark_tracee(&mut self, pid: Pid) {
+        self.tracees.entry(pid.as_raw()).or_insert(State::Attaching);
     }
 }
 

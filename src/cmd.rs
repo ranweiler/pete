@@ -67,7 +67,7 @@ impl Command {
         let env = self.env.as_vec();
         let env = NullTerminatedPointerArray::new(&env);
 
-        match fork()? {
+        match unsafe {fork()?} {
             ForkResult::Child => {
                 // If any post-fork call fails, `panic`, since `?` may call `malloc`
                 // via `Into`, which is not async-signal-safe.

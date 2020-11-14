@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::env;
 
-use pete::{Command, Ptracer, Restart, Stop};
+use pete::{Command, Ptracer, Restart, Stop, Tracee};
 
 
 fn main() -> anyhow::Result<()> {
@@ -29,10 +29,12 @@ fn main() -> anyhow::Result<()> {
                     .cloned()
                     .unwrap_or_else(|| format!("unknown (rax = 0x{:x})", rax));
 
-                println!("{:>16x}: [{}], {:?}", pc, syscall, tracee.stop);
+                let Tracee { pid, stop, .. } = tracee;
+                println!("pid = {}, pc = {:x}: [{}], {:?}", pid, pc, syscall, stop);
             },
             _ => {
-                println!("{:>16x}: {:?}", pc, tracee.stop);
+                let Tracee { pid, stop, .. } = tracee;
+                println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
             },
         }
 

@@ -1,6 +1,6 @@
 use std::env;
 
-use pete::{Command, Ptracer, Restart};
+use pete::{Command, Ptracer, Restart, Tracee};
 
 
 fn main() -> anyhow::Result<()> {
@@ -17,7 +17,8 @@ fn main() -> anyhow::Result<()> {
         let regs = tracee.registers()?;
         let pc = regs.rip as u64;
 
-        println!("{:>16x}: {:?}", pc, tracee.stop);
+        let Tracee { pid, stop, .. } = tracee;
+        println!("pid={}, pc={:x}: {:?}", pid, pc, stop);
 
         ptracer.restart(tracee, Restart::Continue)?;
     }

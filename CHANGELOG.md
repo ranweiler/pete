@@ -31,4 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Prevent `Tracee` from auto-deriving `Send` ([23d7765](https://github.com/ranweiler/pete/commit/23d77651f4badec449109aa7c02f97e768297bcb))
+- Prevent `Tracee` from auto-deriving `Send` ([`23d7765`](https://github.com/ranweiler/pete/commit/23d77651f4badec449109aa7c02f97e768297bcb))

@@ -54,5 +54,8 @@ fn load_syscalls() -> BTreeMap<u64, String> {
         syscalls.insert(callno, name);
     }
 
+    // Work around in-band communication in impl of `rt_sigreturn()`.
+    syscalls.insert(-1i64 as u64, "rt_sigreturn".into());
+
     syscalls
 }

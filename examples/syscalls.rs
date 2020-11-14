@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::env;
 
-use pete::{Command, Ptracer, Restart, Stop};
+use pete::{Command, Ptracer, Restart, Stop, Tracee};
 
 
 fn main() -> anyhow::Result<()> {
@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     let tracee = ptracer.spawn(cmd)?;
     ptracer.restart(tracee, Restart::Syscall)?;
 
-    while let Ok(Some(tracee)) = ptracer.wait() {
+    while let Some(tracee) = ptracer.wait()? {
         let regs = tracee.registers()?;
         let pc = regs.rip as u64;
 
@@ -24,12 +24,17 @@ fn main() -> anyhow::Result<()> {
             Stop::SyscallEnterStop(..) |
             Stop::SyscallExitStop(..)=> {
                 let rax = regs.orig_rax;
-                let syscall = syscalls.get(&rax).unwrap();
+                let syscall = syscalls
+                    .get(&rax)
+                    .cloned()
+                    .unwrap_or_else(|| format!("unknown (rax = 0x{:x})", rax));
 
-                println!("{:>16x}: [{}], {:?}", pc, syscall, tracee.stop);
+                let Tracee { pid, stop, .. } = tracee;
+                println!("pid = {}, pc = {:x}: [{}], {:?}", pid, pc, syscall, stop);
             },
             _ => {
-                println!("{:>16x}: {:?}", pc, tracee.stop);
+                let Tracee { pid, stop, .. } = tracee;
+                println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
             },
         }
 
@@ -50,6 +55,9 @@ fn load_syscalls() -> BTreeMap<u64, String> {
         let name = cols[1].to_owned();
         syscalls.insert(callno, name);
     }
+
+    // Work around in-band communication in impl of `rt_sigreturn()`.
+    syscalls.insert(-1i64 as u64, "rt_sigreturn".into());
 
     syscalls
 }

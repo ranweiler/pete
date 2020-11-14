@@ -25,13 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2020-08-13
 
-### Changed
-
-- `Ptracer::spawn()` now accepts a `Command` instead of an arg vector ([#6](https://github.com/ranweiler/pete/pull/6))
-
 ### Added
 
 - Enable setting `Command` environment ([#6](https://github.com/ranweiler/pete/pull/6))
+
+### Changed
+
+- `Ptracer::spawn()` now accepts a `Command` instead of an arg vector ([#6](https://github.com/ranweiler/pete/pull/6))
 
 ### Fixed
 

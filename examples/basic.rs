@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
         let pc = regs.rip as u64;
 
         let Tracee { pid, stop, .. } = tracee;
-        println!("pid={}, pc={:x}: {:?}", pid, pc, stop);
+        println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
 
         ptracer.restart(tracee, Restart::Continue)?;
     }

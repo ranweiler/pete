@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     let tracee = ptracer.spawn(cmd)?;
     ptracer.restart(tracee, Restart::Syscall)?;
 
-    while let Ok(Some(tracee)) = ptracer.wait() {
+    while let Some(tracee) = ptracer.wait()? {
         let regs = tracee.registers()?;
         let pc = regs.rip as u64;
 

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated `nix` dependency to 0.19.0
 
-## [3.1.0] - 2020-11-14
+## [0.3.1] - 2020-11-14
 
 ### Fixed
 

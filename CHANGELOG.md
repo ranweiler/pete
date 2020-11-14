@@ -15,4 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Handle attach-stops delivered before ptrace-event-stops (ranweiler/pete#12)
+- Handle attach-stops delivered before ptrace-event-stops ([#12](https://github.com/ranweiler/pete/pull/12))

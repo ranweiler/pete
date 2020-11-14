@@ -24,7 +24,10 @@ fn main() -> anyhow::Result<()> {
             Stop::SyscallEnterStop(..) |
             Stop::SyscallExitStop(..)=> {
                 let rax = regs.orig_rax;
-                let syscall = syscalls.get(&rax).unwrap();
+                let syscall = syscalls
+                    .get(&rax)
+                    .cloned()
+                    .unwrap_or_else(|| format!("unknown (rax = 0x{:x})", rax));
 
                 println!("{:>16x}: [{}], {:?}", pc, syscall, tracee.stop);
             },

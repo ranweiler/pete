@@ -314,10 +314,10 @@ impl Ptracer {
 
                 Tracee::new(pid, sig, stop)
             },
-            WaitStatus::PtraceEvent(pid, sig, evt_int) => {
+            WaitStatus::PtraceEvent(pid, sig, raw_evt) => {
                 use ptrace::Event::*;
 
-                let evt = into_ptrace_event_unchecked(evt_int);
+                let evt = into_ptrace_event(raw_evt)?;
 
                 match evt {
                     PTRACE_EVENT_FORK => {
@@ -585,22 +585,33 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
     }
 }
 
-fn into_ptrace_event_unchecked(evt: i32) -> ptrace::Event {
+fn into_ptrace_event(raw: i32) -> Result<ptrace::Event> {
     use ptrace::Event::*;
 
-    match evt {
-        _ if evt == (PTRACE_EVENT_FORK as i32) => PTRACE_EVENT_FORK,
-        _ if evt == (PTRACE_EVENT_VFORK as i32) => PTRACE_EVENT_VFORK,
-        _ if evt == (PTRACE_EVENT_CLONE as i32) => PTRACE_EVENT_CLONE,
-        _ if evt == (PTRACE_EVENT_EXEC as i32) => PTRACE_EVENT_EXEC,
-        _ if evt == (PTRACE_EVENT_VFORK_DONE as i32) => PTRACE_EVENT_VFORK_DONE,
-        _ if evt == (PTRACE_EVENT_EXIT as i32) => PTRACE_EVENT_EXIT,
-        _ if evt == (PTRACE_EVENT_SECCOMP as i32) => PTRACE_EVENT_SECCOMP,
-        128 =>
-            unimplemented!("`PTRACE_EVENT_STOP` not supported in upstream dependency"),
-        _ =>
-            unreachable!() // False for SEIZE
-    }
+    let event = match raw {
+        _ if raw == (PTRACE_EVENT_FORK as i32) => PTRACE_EVENT_FORK,
+        _ if raw == (PTRACE_EVENT_VFORK as i32) => PTRACE_EVENT_VFORK,
+        _ if raw == (PTRACE_EVENT_CLONE as i32) => PTRACE_EVENT_CLONE,
+        _ if raw == (PTRACE_EVENT_EXEC as i32) => PTRACE_EVENT_EXEC,
+        _ if raw == (PTRACE_EVENT_VFORK_DONE as i32) => PTRACE_EVENT_VFORK_DONE,
+        _ if raw == (PTRACE_EVENT_EXIT as i32) => PTRACE_EVENT_EXIT,
+        _ if raw == (PTRACE_EVENT_SECCOMP as i32) => PTRACE_EVENT_SECCOMP,
+        128 => {
+            // `PTRACE_EVENT_STOP` was not supported in the `libc` crate, so it is not
+            // an `Event` variant. We don't support `SEIZE`, and so should not observe
+            // this in the meantime.
+            //
+            // See: https://github.com/nix-rust/nix/issues/1334
+            internal_error!()
+        },
+        _ => {
+            // We should never end up here if we only call the function when `WaitStatus`
+            // is a `PtraceEvent`.
+            internal_error!()
+        }
+    };
+
+    Ok(event)
 }
 
 // Only intended for the result of `ptrace::traceme()`.

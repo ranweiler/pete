@@ -534,7 +534,7 @@ impl ExitType {
             use std::convert::TryFrom;
 
             let core_dump = (status & (1 << 7)) >> 7;
-            let signal = Signal::try_from(sig_no as i32).unwrap();
+            let signal = Signal::try_from(sig_no as i32)?;
             let core_dump = core_dump > 0;
 
             ExitType::Signaled(signal, core_dump)

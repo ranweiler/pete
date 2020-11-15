@@ -1,17 +1,16 @@
 use std::env;
+use std::process::Command;
 
-use pete::{Command, Ptracer, Restart, Tracee};
+use pete::{Ptracer, Restart, Tracee};
 
 
 fn main() -> anyhow::Result<()> {
-    let argv = env::args().skip(1).collect();
-    let cmd = Command::new(argv)?;
+    let argv: Vec<String> = env::args().skip(1).collect();
+    let mut cmd = Command::new(&argv[0]);
+    cmd.args(&argv[1..]);
 
     let mut ptracer = Ptracer::new();
-
-    // Tracee is in pre-exec ptrace-stop.
-    let tracee = ptracer.spawn(cmd)?;
-    ptracer.restart(tracee, Restart::Continue)?;
+    let _child = ptracer.spawn(cmd)?;
 
     while let Some(tracee) = ptracer.wait()? {
         let regs = tracee.registers()?;

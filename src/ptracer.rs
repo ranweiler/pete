@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
+use std::io;
 use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
@@ -202,11 +203,7 @@ impl Ptracer {
     pub fn spawn(&mut self, mut cmd: Command) -> Result<Child> {
         // On fork, request `PTRACE_TRACEME`.
         unsafe {
-            cmd.pre_exec(|| {
-                // TODO: return an `io::Error` based on errno.
-                ptrace::traceme().unwrap();
-                Ok(())
-            });
+            cmd.pre_exec(|| ptrace::traceme().map_err(as_ioerror))
         };
 
         let child = cmd.spawn()?;
@@ -595,5 +592,16 @@ fn into_ptrace_event_unchecked(evt: i32) -> ptrace::Event {
             unimplemented!("`PTRACE_EVENT_STOP` not supported in upstream dependency"),
         _ =>
             unreachable!() // False for SEIZE
+    }
+}
+
+// Only intended for the result of `ptrace::traceme()`.
+fn as_ioerror(err: nix::Error) -> io::Error {
+    if let Some(errno) = err.as_errno() {
+        io::Error::from_raw_os_error(errno as i32)
+    } else {
+        // Should be unreachable when used with `ptrace::traceme()`, since its `Result`
+        // comes from an internal call to `nix::Errno::result()`.
+        io::ErrorKind::Other.into()
     }
 }

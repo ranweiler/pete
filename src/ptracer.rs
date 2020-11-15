@@ -155,7 +155,7 @@ enum State {
     // Newly-attached, expecting a SIGSTOP.
     Attaching,
 
-    // Newly-attached via `spawn()` with a pre-exec `TRACEME` request.
+    // Self-attached, via `spawn()` with a pre-exec `TRACEME` request.
     Spawned,
 
     // After a syscall-exit-stop or seccomp-stop.

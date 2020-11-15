@@ -602,6 +602,6 @@ fn as_ioerror(err: nix::Error) -> io::Error {
     } else {
         // Should be unreachable when used with `ptrace::traceme()`, since its `Result`
         // comes from an internal call to `nix::Errno::result()`.
-        io::ErrorKind::Other.into()
+        io::Error::new(io::ErrorKind::Other, err)
     }
 }

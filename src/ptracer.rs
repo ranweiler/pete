@@ -458,8 +458,13 @@ impl Ptracer {
                                 unreachable!()
                             },
                             State::Spawned => {
-                                // TODO: validate. If this isn't reachable, it is only because
-                                // `Command::spawn()` does not return until the exec has succeeded.
+                                // We only set the tracee state to `Spawned` after a successful call
+                                // to `Command::spawn()` with a pre-exec `TRACEME` request.
+                                //
+                                // The self-attached tracee will continue until `execve()`. Since it
+                                // can only self-attach with default options, the `execve()` will be
+                                // seen as a `SIGTRAP` signal-delivery-stop, not a syscall-stop or
+                                // ptrace-event-stop, and so we can never reach this case.
                                 unreachable!()
                             },
                         }

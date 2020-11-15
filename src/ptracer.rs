@@ -405,7 +405,7 @@ impl Ptracer {
                             Some(state) if *state == State::Attaching => {
                                 *state = State::Syscalling;
                             },
-                            _ => unreachable!()
+                            _ => internal_error!(),
                         }
 
                         Tracee::new(pid, sig, stop)
@@ -455,7 +455,7 @@ impl Ptracer {
                                 // A tracee in this state is waiting for a `SIGSTOP`, which is an
                                 // artifact of `PTRACE_ATTACH`. The next wait status will thus be
                                 // either a `SIGSTOP`, `SIGKILL`, or a `PTRACE_EVENT_EXIT`.
-                                unreachable!()
+                                internal_error!()
                             },
                             State::Spawned => {
                                 // We only set the tracee state to `Spawned` after a successful call
@@ -465,13 +465,13 @@ impl Ptracer {
                                 // can only self-attach with default options, the `execve()` will be
                                 // seen as a `SIGTRAP` signal-delivery-stop, not a syscall-stop or
                                 // ptrace-event-stop, and so we can never reach this case.
-                                unreachable!()
+                                internal_error!()
                             },
                         }
                     },
                     None => {
                         // Assumes any pid we are tracing is also indexed in `self.tracees`.
-                        unreachable!()
+                        internal_error!()
                     },
                 };
 

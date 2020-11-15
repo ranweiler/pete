@@ -1,4 +1,6 @@
+#[macro_use]
 pub mod error;
+
 pub mod ptracer;
 
 pub use error::Error;

@@ -25,3 +25,9 @@ pub enum Error {
     #[error("Internal error: please open an issue at https://github.com/ranweiler/pete/issues")]
     Internal,
 }
+
+macro_rules! internal_error {
+    () => {
+        return Err($crate::error::Error::Internal)
+    }
+}

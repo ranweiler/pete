@@ -208,6 +208,9 @@ impl Ptracer {
 
         let child = cmd.spawn()?;
 
+        // Register the tracee as having been spawned with a pre-exec `TRACEME` request.
+        // This lets us interpret the `SIGTRAP` that will be issued for `execve()`, set
+        // the desired trace options, &c.
         let pid = Pid::from_raw(child.id() as i32);
         self.set_tracee_state(pid, State::Spawned);
 

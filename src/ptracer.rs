@@ -1,16 +1,15 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::marker::PhantomData;
+use std::os::unix::process::CommandExt;
+use std::process::{Child, Command};
 
 use nix::sys::{
     ptrace,
     wait::{self, WaitPidFlag, WaitStatus},
 };
 
-use crate::{
-    cmd::Command,
-    error::{Error, Result},
-};
+use crate::error::{Error, Result};
 
 
 pub use nix::unistd::Pid;
@@ -155,6 +154,9 @@ enum State {
     // Newly-attached, expecting a SIGSTOP.
     Attaching,
 
+    // Newly-attached via `spawn()` with a pre-exec `TRACEME` request.
+    Spawned,
+
     // After a syscall-exit-stop or seccomp-stop.
     Syscalling,
 }
@@ -197,20 +199,22 @@ impl Ptracer {
         })
     }
 
-    pub fn spawn(&mut self, cmd: Command) -> Result<Tracee> {
-        // Fork, request TRACEME, raise a pre-exec SIGSTOP.
-        let pid = cmd.trace_me(true).fork_exec()?;
+    pub fn spawn(&mut self, mut cmd: Command) -> Result<Child> {
+        // On fork, request `PTRACE_TRACEME`.
+        unsafe {
+            cmd.pre_exec(|| {
+                // TODO: return an `io::Error` based on errno.
+                ptrace::traceme().unwrap();
+                Ok(())
+            });
+        };
 
-        self.mark_tracee(pid);
+        let child = cmd.spawn()?;
 
-        // Wait on initial attach stop, which in this case is a synthetic SIGSTOP
-        // raised after forking and requesting TRACEME.
-        let mut tracee = self.wait().map(|t| t.unwrap())?;
+        let pid = Pid::from_raw(child.id() as i32);
+        self.set_tracee_state(pid, State::Spawned);
 
-        // Set global tracing options on root tracee.
-        tracee.set_options(self.options)?;
-
-        Ok(tracee)
+        Ok(child)
     }
 
     /// Attach to a running tracee. This will deliver a SIGSTOP.
@@ -250,8 +254,35 @@ impl Ptracer {
                 return self.wait();
             },
             WaitStatus::Stopped(pid, SIGTRAP) => {
-                let stop = Stop::SignalDeliveryStop(pid, SIGTRAP);
-                Tracee::new(pid, None, stop)
+                let state = self.tracee_state_mut(pid);
+
+                if let Some(state @ State::Spawned) = state {
+                    // A `SIGTRAP` for a tracee in the `Spawned` state means it has returned from a
+                    // successful `execve()` after requesting `PTRACE_TRACEME`. From the manual:
+                    //
+                    //     If the `PTRACE_O_TRACEEXEC` option is not in effect, all successful calls
+                    //     to `execve(2)` by the traced process will cause it to be sent a `SIGTRAP`
+                    //     signal, giving the parent a chance to gain control before the new program
+                    //     begins execution.
+                    //
+                    // `PTRACE_O_TRACEEXEC` is not set by default, so it is not set when the child
+                    // requests the attach. We will thus see its exec as a `SIGTRAP`, no matter what
+                    // is set in `self.options`.
+                    let stop = Stop::SyscallExitStop(pid);
+                    let mut tracee = Tracee::new(pid, None, stop);
+
+                    // Update the tracee state so subsequent traps are interpreted correctly.
+                    *state = State::Traced;
+
+                    // Set global tracing options on this root tracee. Auto-attached tracees from
+                    // fork, clone, and exec will inherit them.
+                    tracee.set_options(self.options)?;
+
+                    tracee
+                } else {
+                    let stop = Stop::SignalDeliveryStop(pid, SIGTRAP);
+                    Tracee::new(pid, None, stop)
+                }
             },
             WaitStatus::Stopped(pid, sig) => {
                 if sig == SIGSTOP {
@@ -424,6 +455,11 @@ impl Ptracer {
                                 // A tracee in this state is waiting for a `SIGSTOP`, which is an
                                 // artifact of `PTRACE_ATTACH`. The next wait status will thus be
                                 // either a `SIGSTOP`, `SIGKILL`, or a `PTRACE_EVENT_EXIT`.
+                                unreachable!()
+                            },
+                            State::Spawned => {
+                                // TODO: validate. If this isn't reachable, it is only because
+                                // `Command::spawn()` does not return until the exec has succeeded.
                                 unreachable!()
                             },
                         }

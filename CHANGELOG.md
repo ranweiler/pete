@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Ptracer::spawn()` now takes a `std::process::Command` ([#21](https://github.com/ranweiler/pete/pull/21))
+- Remove `cmd` module and custom `Command` struct
 - Updated `nix` dependency to 0.19.0
 
 ## [0.3.1] - 2020-11-14

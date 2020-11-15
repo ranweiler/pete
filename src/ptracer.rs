@@ -480,7 +480,7 @@ impl Ptracer {
             // Assume `!WNOHANG`, `!WCONTINUED`.
             WaitStatus::Continued(_) |
             WaitStatus::StillAlive =>
-                unreachable!(),
+                internal_error!(),
         };
 
         Ok(Some(tracee))

@@ -314,10 +314,10 @@ impl Ptracer {
 
                 Tracee::new(pid, sig, stop)
             },
-            WaitStatus::PtraceEvent(pid, sig, evt_int) => {
+            WaitStatus::PtraceEvent(pid, sig, raw_evt) => {
                 use ptrace::Event::*;
 
-                let evt = into_ptrace_event_unchecked(evt_int);
+                let evt = into_ptrace_event(raw_evt)?;
 
                 match evt {
                     PTRACE_EVENT_FORK => {
@@ -405,7 +405,7 @@ impl Ptracer {
                             Some(state) if *state == State::Attaching => {
                                 *state = State::Syscalling;
                             },
-                            _ => unreachable!()
+                            _ => internal_error!(),
                         }
 
                         Tracee::new(pid, sig, stop)
@@ -455,7 +455,7 @@ impl Ptracer {
                                 // A tracee in this state is waiting for a `SIGSTOP`, which is an
                                 // artifact of `PTRACE_ATTACH`. The next wait status will thus be
                                 // either a `SIGSTOP`, `SIGKILL`, or a `PTRACE_EVENT_EXIT`.
-                                unreachable!()
+                                internal_error!()
                             },
                             State::Spawned => {
                                 // We only set the tracee state to `Spawned` after a successful call
@@ -465,13 +465,13 @@ impl Ptracer {
                                 // can only self-attach with default options, the `execve()` will be
                                 // seen as a `SIGTRAP` signal-delivery-stop, not a syscall-stop or
                                 // ptrace-event-stop, and so we can never reach this case.
-                                unreachable!()
+                                internal_error!()
                             },
                         }
                     },
                     None => {
                         // Assumes any pid we are tracing is also indexed in `self.tracees`.
-                        unreachable!()
+                        internal_error!()
                     },
                 };
 
@@ -480,7 +480,7 @@ impl Ptracer {
             // Assume `!WNOHANG`, `!WCONTINUED`.
             WaitStatus::Continued(_) |
             WaitStatus::StillAlive =>
-                unreachable!(),
+                internal_error!(),
         };
 
         Ok(Some(tracee))
@@ -534,7 +534,7 @@ impl ExitType {
             use std::convert::TryFrom;
 
             let core_dump = (status & (1 << 7)) >> 7;
-            let signal = Signal::try_from(sig_no as i32).unwrap();
+            let signal = Signal::try_from(sig_no as i32)?;
             let core_dump = core_dump > 0;
 
             ExitType::Signaled(signal, core_dump)
@@ -585,22 +585,33 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
     }
 }
 
-fn into_ptrace_event_unchecked(evt: i32) -> ptrace::Event {
+fn into_ptrace_event(raw: i32) -> Result<ptrace::Event> {
     use ptrace::Event::*;
 
-    match evt {
-        _ if evt == (PTRACE_EVENT_FORK as i32) => PTRACE_EVENT_FORK,
-        _ if evt == (PTRACE_EVENT_VFORK as i32) => PTRACE_EVENT_VFORK,
-        _ if evt == (PTRACE_EVENT_CLONE as i32) => PTRACE_EVENT_CLONE,
-        _ if evt == (PTRACE_EVENT_EXEC as i32) => PTRACE_EVENT_EXEC,
-        _ if evt == (PTRACE_EVENT_VFORK_DONE as i32) => PTRACE_EVENT_VFORK_DONE,
-        _ if evt == (PTRACE_EVENT_EXIT as i32) => PTRACE_EVENT_EXIT,
-        _ if evt == (PTRACE_EVENT_SECCOMP as i32) => PTRACE_EVENT_SECCOMP,
-        128 =>
-            unimplemented!("`PTRACE_EVENT_STOP` not supported in upstream dependency"),
-        _ =>
-            unreachable!() // False for SEIZE
-    }
+    let event = match raw {
+        _ if raw == (PTRACE_EVENT_FORK as i32) => PTRACE_EVENT_FORK,
+        _ if raw == (PTRACE_EVENT_VFORK as i32) => PTRACE_EVENT_VFORK,
+        _ if raw == (PTRACE_EVENT_CLONE as i32) => PTRACE_EVENT_CLONE,
+        _ if raw == (PTRACE_EVENT_EXEC as i32) => PTRACE_EVENT_EXEC,
+        _ if raw == (PTRACE_EVENT_VFORK_DONE as i32) => PTRACE_EVENT_VFORK_DONE,
+        _ if raw == (PTRACE_EVENT_EXIT as i32) => PTRACE_EVENT_EXIT,
+        _ if raw == (PTRACE_EVENT_SECCOMP as i32) => PTRACE_EVENT_SECCOMP,
+        128 => {
+            // `PTRACE_EVENT_STOP` was not supported in the `libc` crate, so it is not
+            // an `Event` variant. We don't support `SEIZE`, and so should not observe
+            // this in the meantime.
+            //
+            // See: https://github.com/nix-rust/nix/issues/1334
+            internal_error!()
+        },
+        _ => {
+            // We should never end up here if we only call the function when `WaitStatus`
+            // is a `PtraceEvent`.
+            internal_error!()
+        }
+    };
+
+    Ok(event)
 }
 
 // Only intended for the result of `ptrace::traceme()`.

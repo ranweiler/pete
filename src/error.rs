@@ -13,15 +13,21 @@ pub enum Error {
         source: nix::Error,
     },
 
-    #[error("Error waiting on tracees")]
-    Wait { source: nix::Error },
-
     #[error("Could not restart tracee = {pid} with mode = {mode:?}")]
     Restart { pid: Pid, mode: Restart, source: nix::Error },
 
     #[error("Input/output error")]
-    InputOutput(#[from] io::Error),
+    IO(#[from] io::Error),
 
-    #[error("Unexpected internal error")]
-    Internal(#[from] nix::Error),
+    #[error("OS error")]
+    OS(#[from] nix::Error),
+
+    #[error("Internal error: please open an issue at https://github.com/ranweiler/pete/issues")]
+    Internal,
+}
+
+macro_rules! internal_error {
+    () => {
+        return Err($crate::error::Error::Internal)
+    }
 }

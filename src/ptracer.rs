@@ -397,22 +397,21 @@ impl Ptracer {
                         let ret_data = ptrace::getevent(pid)? as u16;
                         let stop = Stop::Seccomp(ret_data);
 
-                        match self.tracee_state_mut(pid) {
-                            Some(state) if *state == State::Attaching => {
-                                *state = State::Syscalling;
-                            },
-                            _ => internal_error!(),
+                        if let Some(state) = self.tracee_state_mut(pid) {
+                            *state = State::Syscalling;
+                        } else {
+                            internal_error!("seccomp ptrace-event-stop for non-tracee");
                         }
 
                         Tracee::new(pid, sig, stop)
                     },
                     libc::PTRACE_EVENT_STOP => {
                         // Unreachable by us, since we do not expose `PTRACE_SEIZE` &c.
-                        internal_error!()
+                        internal_error!("unreachable ptrace-event-stop")
                     },
                     _ => {
                         // All kernel-delivered `event` values are matched above.
-                        internal_error!()
+                        internal_error!("unexpected ptrace-event-stop code")
                     },
                 }
             },
@@ -459,7 +458,7 @@ impl Ptracer {
                                 // A tracee in this state is waiting for a `SIGSTOP`, which is an
                                 // artifact of `PTRACE_ATTACH`. The next wait status will thus be
                                 // either a `SIGSTOP`, `SIGKILL`, or a `PTRACE_EVENT_EXIT`.
-                                internal_error!()
+                                internal_error!("syscall-stop for `Attaching` tracee")
                             },
                             State::Spawned => {
                                 // We only set the tracee state to `Spawned` after a successful call
@@ -469,13 +468,13 @@ impl Ptracer {
                                 // can only self-attach with default options, the `execve()` will be
                                 // seen as a `SIGTRAP` signal-delivery-stop, not a syscall-stop or
                                 // ptrace-event-stop, and so we can never reach this case.
-                                internal_error!()
+                                internal_error!("syscall-stop for `Spawning` tracee")
                             },
                         }
                     },
                     None => {
                         // Assumes any pid we are tracing is also indexed in `self.tracees`.
-                        internal_error!()
+                        internal_error!("syscall-stop for unregistered tracee")
                     },
                 };
 
@@ -484,7 +483,7 @@ impl Ptracer {
             // Assume `!WNOHANG`, `!WCONTINUED`.
             WaitStatus::Continued(_) |
             WaitStatus::StillAlive =>
-                internal_error!(),
+                internal_error!("unreachable `wait()` status"),
         };
 
         Ok(Some(tracee))

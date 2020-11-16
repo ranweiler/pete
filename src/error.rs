@@ -22,12 +22,12 @@ pub enum Error {
     #[error("OS error")]
     OS(#[from] nix::Error),
 
-    #[error("Internal error: please open an issue at https://github.com/ranweiler/pete/issues")]
-    Internal,
+    #[error("Internal error: {0}. Please open an issue at https://github.com/ranweiler/pete/issues")]
+    Internal(String),
 }
 
 macro_rules! internal_error {
-    () => {
-        return Err($crate::error::Error::Internal)
+    ($ctx: expr) => {
+        return Err($crate::error::Error::Internal($ctx.into()));
     }
 }

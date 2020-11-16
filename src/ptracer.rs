@@ -314,13 +314,9 @@ impl Ptracer {
 
                 Tracee::new(pid, sig, stop)
             },
-            WaitStatus::PtraceEvent(pid, sig, raw_evt) => {
-                use ptrace::Event::*;
-
-                let evt = into_ptrace_event(raw_evt)?;
-
-                match evt {
-                    PTRACE_EVENT_FORK => {
+            WaitStatus::PtraceEvent(pid, sig, code) => {
+                match code {
+                    libc::PTRACE_EVENT_FORK => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
@@ -330,7 +326,7 @@ impl Ptracer {
                         let stop = Stop::Fork(pid, new_pid);
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_CLONE => {
+                    libc::PTRACE_EVENT_CLONE => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
@@ -340,7 +336,7 @@ impl Ptracer {
                         let stop = Stop::Clone(pid, new_pid);
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_EXEC => {
+                    libc::PTRACE_EVENT_EXEC => {
                         // We are in one of two cases. The exec has either occurred on the main
                         // thread of the thread group, or not. In either case, the new tid of the
                         // execing thread will be equal to the tgid. In the off-main case, this is
@@ -366,7 +362,7 @@ impl Ptracer {
 
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_EXIT => {
+                    libc::PTRACE_EVENT_EXIT => {
                         // In this context, `PTRACE_GETEVENTMSG` returns the pending wait status
                         // as an `unsigned long`. We are only interested in the low 16-bit word.
                         let status = ptrace::getevent(pid)? as u16;
@@ -382,7 +378,7 @@ impl Ptracer {
 
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_VFORK => {
+                    libc::PTRACE_EVENT_VFORK => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
                         self.mark_tracee(new_pid);
 
@@ -390,13 +386,13 @@ impl Ptracer {
 
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_VFORK_DONE => {
+                    libc::PTRACE_EVENT_VFORK_DONE => {
                         let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
                         let stop = Stop::VforkDone(pid, new_pid);
 
                         Tracee::new(pid, sig, stop)
                     },
-                    PTRACE_EVENT_SECCOMP => {
+                    libc::PTRACE_EVENT_SECCOMP => {
                         // `SECCOMP_RET_DATA`, which is the low 16 bits of an int.
                         let ret_data = ptrace::getevent(pid)? as u16;
                         let stop = Stop::Seccomp(ret_data);
@@ -409,6 +405,14 @@ impl Ptracer {
                         }
 
                         Tracee::new(pid, sig, stop)
+                    },
+                    libc::PTRACE_EVENT_STOP => {
+                        // Unreachable by us, since we do not expose `PTRACE_SEIZE` &c.
+                        internal_error!()
+                    },
+                    _ => {
+                        // All kernel-delivered `event` values are matched above.
+                        internal_error!()
                     },
                 }
             },
@@ -583,35 +587,6 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
             Ok(false)
         },
     }
-}
-
-fn into_ptrace_event(raw: i32) -> Result<ptrace::Event> {
-    use ptrace::Event::*;
-
-    let event = match raw {
-        _ if raw == (PTRACE_EVENT_FORK as i32) => PTRACE_EVENT_FORK,
-        _ if raw == (PTRACE_EVENT_VFORK as i32) => PTRACE_EVENT_VFORK,
-        _ if raw == (PTRACE_EVENT_CLONE as i32) => PTRACE_EVENT_CLONE,
-        _ if raw == (PTRACE_EVENT_EXEC as i32) => PTRACE_EVENT_EXEC,
-        _ if raw == (PTRACE_EVENT_VFORK_DONE as i32) => PTRACE_EVENT_VFORK_DONE,
-        _ if raw == (PTRACE_EVENT_EXIT as i32) => PTRACE_EVENT_EXIT,
-        _ if raw == (PTRACE_EVENT_SECCOMP as i32) => PTRACE_EVENT_SECCOMP,
-        128 => {
-            // `PTRACE_EVENT_STOP` was not supported in the `libc` crate, so it is not
-            // an `Event` variant. We don't support `SEIZE`, and so should not observe
-            // this in the meantime.
-            //
-            // See: https://github.com/nix-rust/nix/issues/1334
-            internal_error!()
-        },
-        _ => {
-            // We should never end up here if we only call the function when `WaitStatus`
-            // is a `PtraceEvent`.
-            internal_error!()
-        }
-    };
-
-    Ok(event)
 }
 
 // Only intended for the result of `ptrace::traceme()`.

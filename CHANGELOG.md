@@ -13,10 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add context to `Error::Internal` ([#25](https://github.com/ranweiler/pete/pull/25))
 - Rename and expand `Error` variants, replace internal panics with `Error::Internal` returns
 - `Ptracer::spawn()` now takes a `std::process::Command`, returns `Child` instead of `Tracee` ([#21](https://github.com/ranweiler/pete/pull/21))
 - Remove `cmd` module and custom `Command` struct
 - Updated `nix` dependency to 0.19.0
+
+### Fixed
+
+- Don't treat seccomp event-stops as internal errors when tracees have non-`Attaching` state ([#25](https://github.com/ranweiler/pete/pull/25))
 
 ## [0.3.1] - 2020-11-14
 

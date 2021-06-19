@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+- Update `nix` lower bound to 0.21.0
+- Minimum supported `rustc` version is now 1.41.0, via `nix`
+
+### Fixed
+
 ## [0.4.0] - 2020-11-16
 
 ### Added

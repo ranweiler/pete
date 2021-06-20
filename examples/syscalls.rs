@@ -1,16 +1,24 @@
 use std::collections::BTreeMap;
-use std::env;
 use std::process::Command;
 
 use pete::{Ptracer, Restart, Stop, Tracee};
+use structopt::StructOpt;
 
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(min_values = 1)]
+    argv: Vec<String>,
+}
 
 fn main() -> anyhow::Result<()> {
     let syscalls = load_syscalls();
 
-    let argv: Vec<String> = env::args().skip(1).collect();
+    let opt = Opt::from_args();
+    let argv: Vec<String> = opt.argv;
     let mut cmd = Command::new(&argv[0]);
-    cmd.args(&argv[1..]);
+    if let Some(args) = argv.get(1..) {
+        cmd.args(args);
+    }
 
     let mut ptracer = Ptracer::new();
     let _child = ptracer.spawn(cmd)?;

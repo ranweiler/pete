@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 use std::process::Command;
 
+use anyhow::Result;
 use pete::{Ptracer, Restart, Stop, Tracee};
+use lazy_static::lazy_static;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -10,9 +12,7 @@ struct Opt {
     argv: Vec<String>,
 }
 
-fn main() -> anyhow::Result<()> {
-    let syscalls = load_syscalls();
-
+fn main() -> Result<()> {
     let opt = Opt::from_args();
     let argv: Vec<String> = opt.argv;
     let mut cmd = Command::new(&argv[0]);
@@ -23,27 +23,8 @@ fn main() -> anyhow::Result<()> {
     let mut ptracer = Ptracer::new();
     let _child = ptracer.spawn(cmd)?;
 
-    while let Some(tracee) = ptracer.wait()? {
-        let regs = tracee.registers()?;
-        let pc = regs.rip as u64;
-
-        match tracee.stop {
-            Stop::SyscallEnterStop(..) |
-            Stop::SyscallExitStop(..)=> {
-                let rax = regs.orig_rax;
-                let syscall = syscalls
-                    .get(&rax)
-                    .cloned()
-                    .unwrap_or_else(|| format!("unknown (rax = 0x{:x})", rax));
-
-                let Tracee { pid, stop, .. } = tracee;
-                println!("pid = {}, pc = {:x}: [{}], {:?}", pid, pc, syscall, stop);
-            },
-            _ => {
-                let Tracee { pid, stop, .. } = tracee;
-                println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
-            },
-        }
+    while let Some(mut tracee) = ptracer.wait()? {
+        on_stop(&mut tracee)?;
 
         ptracer.restart(tracee, Restart::Syscall)?;
     }
@@ -51,9 +32,40 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn on_stop(tracee: &mut Tracee) -> Result<()> {
+    let regs = tracee.registers()?;
+    let pc = regs.rip as u64;
+
+    match tracee.stop {
+        Stop::SyscallEnterStop(..) |
+        Stop::SyscallExitStop(..)=> {
+            let syscallno = regs.orig_rax;
+            let syscall = SYSCALL_TABLE
+                .get(&syscallno)
+                .cloned()
+                .unwrap_or_else(|| format!("unknown (syscallno = 0x{:x})", syscallno));
+
+            let Tracee { pid, stop, .. } = tracee;
+            println!("pid = {}, pc = {:x}: [{}], {:?}", pid, pc, syscall, stop);
+        },
+        _ => {
+            let Tracee { pid, stop, .. } = tracee;
+            println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
+        },
+    }
+
+    Ok(())
+}
+
 const SYSCALLS: &'static str = include_str!("data/syscalls_x64.tsv");
 
-fn load_syscalls() -> BTreeMap<u64, String> {
+lazy_static! {
+    static ref SYSCALL_TABLE: SyscallTable = load_syscall_table();
+}
+
+type SyscallTable = BTreeMap<u64, String>;
+
+fn load_syscall_table() -> SyscallTable {
     let mut syscalls = BTreeMap::new();
 
     for line in SYSCALLS.split_terminator('\n') {

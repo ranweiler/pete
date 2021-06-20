@@ -8,6 +8,9 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Opt {
+    #[structopt(short, long)]
+    tsv: bool,
+
     #[structopt(min_values = 1)]
     argv: Vec<String>,
 }
@@ -24,7 +27,11 @@ fn main() -> Result<()> {
     let _child = ptracer.spawn(cmd)?;
 
     while let Some(mut tracee) = ptracer.wait()? {
-        on_stop(&mut tracee)?;
+        if opt.tsv {
+            on_stop_tsv(&mut tracee)?;
+        } else {
+            on_stop(&mut tracee)?;
+        }
 
         ptracer.restart(tracee, Restart::Syscall)?;
     }
@@ -38,7 +45,7 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
 
     match tracee.stop {
         Stop::SyscallEnterStop(..) |
-        Stop::SyscallExitStop(..)=> {
+        Stop::SyscallExitStop(..) => {
             let syscallno = regs.orig_rax;
             let syscall = SYSCALL_TABLE
                 .get(&syscallno)
@@ -53,6 +60,30 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
             println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
         },
     }
+
+    Ok(())
+}
+
+fn on_stop_tsv(tracee: &mut Tracee) -> Result<()> {
+    match tracee.stop {
+        Stop::SyscallEnterStop(..) => {
+            on_syscall_stop_tsv(tracee, true)?;
+        }
+        Stop::SyscallExitStop(..)=> {
+            on_syscall_stop_tsv(tracee, false)?;
+        }
+        _ => {},
+    }
+
+    Ok(())
+}
+
+fn on_syscall_stop_tsv(tracee: &mut Tracee, syscall_enter: bool) -> Result<()> {
+    let regs = tracee.registers()?;
+    let syscallno = regs.orig_rax;
+    let stop_type = if syscall_enter { "enter" } else { "exit" };
+
+    println!("{}\t{}\t{}", tracee.pid, stop_type, syscallno);
 
     Ok(())
 }

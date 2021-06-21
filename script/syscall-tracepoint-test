@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -ex -o pipefail
+
+SCRIPT_DIR=$(readlink -f $(dirname "$0"))
+BUILD_ROOT=$(readlink -f $1)
+SYSCALL_EX="${BUILD_ROOT}/release/examples/syscalls"
+
+do_test() {
+    # Spawn and trace a `pete` example tracer that emits syscalls as TSV. Pipe the
+    # tracee's output to `pete.tsv` while also recording raw syscall enter and exit
+    # tracepoints.
+    sudo perf record \
+         --inherit \
+         -o perf.data \
+         -e 'raw_syscalls:sys_enter' \
+         -e 'raw_syscalls:sys_exit' \
+         -- $SYSCALL_EX -q -t echo hello > pete.tsv
+
+    # Convert the binary perf data to text. This text will be formatted as as specified in
+    # the files `/sys/kernel/debug/tracing/events/raw_syscalls/sys_{enter,exit}/format`.
+    sudo perf script -i perf.data > perf.log
+
+    # Filter out perf events from the `pete` tracer.
+    grep -v '^[[:space:]]*syscalls' perf.log > perf-target.log
+
+    # Convert the text tracepoint data into TSV that matches the `pete` example's output.
+    ${SCRIPT_DIR}/parse_perf_trace.py < perf-target.log > perf.tsv
+
+    # Ensure at least one file is nonempty, so we don't get a spurious pass by comparing
+    # two empty files.
+    if (( $(du -b perf.tsv | cut -f1) == 0 )); then
+        echo 'test error: `perf.tsv` is empty'
+        exit 1
+    fi
+
+    diff -q perf.tsv pete.tsv
+}
+
+TMP_DIR=$(mktemp -d)
+pushd $TMP_DIR
+
+do_test
+
+popd
+rm -rf $TMP_DIR

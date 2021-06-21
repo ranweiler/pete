@@ -3,8 +3,8 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  build:
-    name: build (${{ matrix.rust }})
+  ci:
+    name: ci (${{ matrix.rust }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,7 +18,9 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --examples
+      - name: build (debug, examples)
+        run: cargo build --examples
+      - name: "build `syscalls` example (release)"
+        run: cargo build --release --example syscalls
+      - name: "integration test (syscalls)"
+        run: ./script/syscall-tracepoint-test ./target

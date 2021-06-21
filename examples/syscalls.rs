@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use anyhow::Result;
 use pete::{Ptracer, Restart, Stop, Tracee};
@@ -11,6 +11,9 @@ struct Opt {
     #[structopt(short, long)]
     tsv: bool,
 
+    #[structopt(short, long)]
+    quiet: bool,
+
     #[structopt(min_values = 1)]
     argv: Vec<String>,
 }
@@ -18,9 +21,16 @@ struct Opt {
 fn main() -> Result<()> {
     let opt = Opt::from_args();
     let argv: Vec<String> = opt.argv;
+
     let mut cmd = Command::new(&argv[0]);
+
     if let Some(args) = argv.get(1..) {
         cmd.args(args);
+    }
+
+    if opt.quiet {
+        cmd.stdout(Stdio::null());
+        cmd.stderr(Stdio::null());
     }
 
     let mut ptracer = Ptracer::new();

@@ -68,6 +68,7 @@ pub struct Tracee {
     pub pending: Option<Signal>,
     pub stop: Stop,
 
+    #[doc(hidden)]
     pub _not_send: PhantomData<*const ()>,
 }
 

@@ -81,7 +81,7 @@ pub struct Tracee {
     pub stop: Stop,
 
     #[doc(hidden)]
-    pub _not_send: PhantomData<*const ()>,
+    _not_send: PhantomData<*const ()>,
 }
 
 impl Tracee {

@@ -2,6 +2,15 @@
 
 A friendly wrapper around the Linux `ptrace(2)` syscall.
 
+## Requirements
+
+The minimum supported OS and compiler versions are:
+
+- Linux 4.8
+- rustc 1.41.0
+
+Support for earlier Linux versions is possible, but would require additional effort.
+
 ## Summary
 
 The `ptrace(2)` interface entails interpreting a series of `wait(2)` statuses. The context used to

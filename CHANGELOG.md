@@ -11,8 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+## [0.5.0] - 2021-06-21
+
+### Added
+
+### Changed
+
 - Update `nix` lower bound to 0.21.0
 - Minimum supported `rustc` version is now 1.41.0, via `nix`
+- Added `--quiet`, `--tsv` options to `syscalls` example
 
 ### Fixed
 

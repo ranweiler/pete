@@ -1,3 +1,5 @@
+//! Types for attaching to processes, managing tracees, and interpreting tracing events.
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;

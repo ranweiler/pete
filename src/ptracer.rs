@@ -15,14 +15,24 @@ use crate::error::{Error, Result};
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
+
+/// POSIX signal.
 pub use nix::sys::signal::Signal;
 
+/// Register state of a tracee.
 pub type Registers = libc::user_regs_struct;
+
+/// Extra signal info, such as its cause.
 pub type Siginfo = libc::siginfo_t;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
-/// Various ptrace-stops.
+/// A _ptrace-stop_, a tracee state in which it is stopped and ready to accept ptrace
+/// commands.
+///
+/// These ptrace-stops may carry data obtained via additional (internal) ptrace requests
+/// to `PTRACE_GETEVENTMSG`. Requests to `PTRACE_GETSIGINFO` may be made to disambiguate
+/// stops.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Stop {
     AttachStop(Pid),
@@ -48,7 +58,9 @@ pub enum Stop {
     Seccomp(u16),
 }
 
-/// Ptrace restart requests.
+/// Restart requests, which resume stopped tracees.
+///
+/// The restart mode determines the possible subsequent stops of the restarted tracee.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Restart {
     Step,
@@ -56,12 +68,10 @@ pub enum Restart {
     Syscall,
 }
 
-/// Tracee in ptrace-stop, with an optional pending signal.
+/// Tracee task in ptrace-stop, with an optional pending signal.
 ///
-/// Describes how the stopped tracee would continue if it weren't traced, and thus how to
-/// restart it to resume normal execution.
-///
-/// The underlying tracee is not guaranteed to exist.
+/// **Warning:** the underlying tracee is not guaranteed to exist, and
+/// operations on it may fail between calls to [`Ptracer::wait()`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Tracee {
     pub pid: Pid,
@@ -163,7 +173,12 @@ enum State {
     Syscalling,
 }
 
-/// Tracer for a (possibly multi-threaded) Linux process.
+/// Tracer for a Linux process.
+///
+/// By default, [spawning](Ptracer::spawn()) a child tracee will follow calls to `fork()`,
+/// `clone()`, and `exec()`, tracing any child tasks (both threads and processes).
+///
+/// This can be configured for any stopped tracee via [`Tracee::set_options()`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ptracer {
     /// Ptrace options that will be applied to tracees, by default.
@@ -201,6 +216,10 @@ impl Ptracer {
         })
     }
 
+    /// Spawn `cmd` for tracing.
+    ///
+    /// The command will be configured to requrest `PTRACE_TRACEME` after `fork()` and
+    /// pre-`exec()`. The caller will use this to avoid races and missed events.
     pub fn spawn(&mut self, mut cmd: Command) -> Result<Child> {
         // On fork, request `PTRACE_TRACEME`.
         unsafe {
@@ -218,10 +237,10 @@ impl Ptracer {
         Ok(child)
     }
 
-    /// Attach to a running tracee. This will deliver a SIGSTOP.
+    /// Attach to a running tracee. This will deliver a `SIGSTOP`.
     ///
-    /// Warning: the tracee may not be considered stopped until it has been seen
-    /// to stop via `wait()`.
+    /// **Warning:** the tracee may not be considered stopped until it has been seen to
+    /// stop via `wait()`.
     pub fn attach(&mut self, pid: Pid) -> Result<()> {
         let r = ptrace::attach(pid);
         let r = r.map_err(|source| Error::Attach { pid, source });
@@ -232,6 +251,8 @@ impl Ptracer {
     }
 
     /// Wait for some running tracee process to stop.
+    ///
+    /// If there are no tracees to wait on, returns `None`.
     pub fn wait(&mut self) -> Result<Option<Tracee>> {
         use Signal::*;
 

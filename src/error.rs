@@ -27,6 +27,9 @@ pub enum Error {
     #[error("Could not restart tracee = {pid} with mode = {mode:?}")]
     Restart { pid: Pid, mode: Restart, source: nix::Error },
 
+    #[error("Tracee died while in ptrace-stop")]
+    TraceeDied { pid: Pid, source: nix::Error },
+
     #[error("Input/output error")]
     IO(#[from] io::Error),
 
@@ -37,8 +40,40 @@ pub enum Error {
     Internal(String),
 }
 
+impl Error {
+    pub fn tracee_died(&self) -> bool {
+        match self {
+            Error::Restart { .. } |
+            Error::TraceeDied { .. } => {
+                true
+            },
+            _ => {
+                false
+            },
+        }
+    }
+}
+
 macro_rules! internal_error {
     ($ctx: expr) => {
         return Err($crate::error::Error::Internal($ctx.into()));
+    }
+}
+
+pub(crate) trait ResultExt<T> {
+    fn died_if_esrch(self, pid: Pid) -> Result<T>;
+}
+
+impl<T> ResultExt<T> for std::result::Result<T, nix::Error> {
+    fn died_if_esrch(self, pid: Pid) -> Result<T> {
+        use nix::errno::Errno;
+
+        self.map_err(|err| {
+            if let nix::Error::Sys(Errno::ESRCH) = err {
+                Error::TraceeDied { pid, source: err }
+            } else {
+                err.into()
+            }
+        })
     }
 }

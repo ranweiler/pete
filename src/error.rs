@@ -61,6 +61,10 @@ macro_rules! internal_error {
 }
 
 pub(crate) trait ResultExt<T> {
+    /// Maps an `ESRCH` error result to `Error::TraceeDied`.
+    ///
+    /// Should only be called on results of `ptrace()` operations on valid tracees known
+    /// to be in ptrace-stop.
     fn died_if_esrch(self, pid: Pid) -> Result<T>;
 }
 

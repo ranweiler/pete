@@ -1,9 +1,11 @@
 use std::process::Command;
 
 use anyhow::Result;
+use ntest::timeout;
 use pete::{Error, Ptracer, Restart};
 
 #[test]
+#[timeout(100)]
 fn test_tracee_died() -> Result<()> {
     let cmd = Command::new("true");
 

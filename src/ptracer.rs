@@ -12,7 +12,7 @@ use nix::sys::{
     wait::{self, WaitPidFlag, WaitStatus},
 };
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, ResultExt};
 
 
 pub use nix::unistd::Pid;
@@ -104,15 +104,15 @@ impl Tracee {
 
     /// Set custom tracing options on the tracee.
     pub fn set_options(&mut self, options: Options) -> Result<()> {
-        Ok(ptrace::setoptions(self.pid, options)?)
+        Ok(ptrace::setoptions(self.pid, options).died_if_esrch(self.pid)?)
     }
 
     pub fn registers(&self) -> Result<Registers> {
-        Ok(ptrace::getregs(self.pid)?)
+        Ok(ptrace::getregs(self.pid).died_if_esrch(self.pid)?)
     }
 
     pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
-        Ok(ptrace::setregs(self.pid, regs)?)
+        Ok(ptrace::setregs(self.pid, regs).died_if_esrch(self.pid)?)
     }
 
     pub fn read_memory(&mut self, addr: u64, len: usize) -> Result<Vec<u8>> {
@@ -151,7 +151,7 @@ impl Tracee {
 
     pub fn siginfo(&self) -> Result<Option<Siginfo>> {
         let info = if let Stop::SignalDeliveryStop(..) = self.stop {
-            Some(ptrace::getsiginfo(self.pid)?)
+            Some(ptrace::getsiginfo(self.pid).died_if_esrch(self.pid)?)
         } else {
             None
         };
@@ -341,7 +341,8 @@ impl Ptracer {
             WaitStatus::PtraceEvent(pid, sig, code) => {
                 match code {
                     libc::PTRACE_EVENT_FORK => {
-                        let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
+                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
                         // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
@@ -351,7 +352,8 @@ impl Ptracer {
                         Tracee::new(pid, sig, stop)
                     },
                     libc::PTRACE_EVENT_CLONE => {
-                        let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
+                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
 
                         // When we return, `new_pid` will start as a tracee, but will be delivered
                         // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
@@ -367,7 +369,8 @@ impl Ptracer {
                         // a change, and the old state for the tid == tgid will be invalid.
 
                         // The current `pid` is now equal to the tgid of `old_pid`.
-                        let old_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
+                        let old_pid = Pid::from_raw(evt_data as u32 as i32);
 
                         if old_pid != pid {
                             // We exec'd off-thread, and previous tid state is now invalid.
@@ -389,7 +392,7 @@ impl Ptracer {
                     libc::PTRACE_EVENT_EXIT => {
                         // In this context, `PTRACE_GETEVENTMSG` returns the pending wait status
                         // as an `unsigned long`. We are only interested in the low 16-bit word.
-                        let status = ptrace::getevent(pid)? as u16;
+                        let status = ptrace::getevent(pid).died_if_esrch(pid)? as u16;
 
                         self.remove_tracee(pid);
 
@@ -403,7 +406,8 @@ impl Ptracer {
                         Tracee::new(pid, sig, stop)
                     },
                     libc::PTRACE_EVENT_VFORK => {
-                        let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
+                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
                         self.mark_tracee(new_pid);
 
                         let stop = Stop::Vfork(pid, new_pid);
@@ -411,14 +415,15 @@ impl Ptracer {
                         Tracee::new(pid, sig, stop)
                     },
                     libc::PTRACE_EVENT_VFORK_DONE => {
-                        let new_pid = Pid::from_raw(ptrace::getevent(pid)? as u32 as i32);
+                        let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
+                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
                         let stop = Stop::VforkDone(pid, new_pid);
 
                         Tracee::new(pid, sig, stop)
                     },
                     libc::PTRACE_EVENT_SECCOMP => {
                         // `SECCOMP_RET_DATA`, which is the low 16 bits of an int.
-                        let ret_data = ptrace::getevent(pid)? as u16;
+                        let ret_data = ptrace::getevent(pid).died_if_esrch(pid)? as u16;
                         let stop = Stop::Seccomp(ret_data);
 
                         if let Some(state) = self.tracee_state_mut(pid) {

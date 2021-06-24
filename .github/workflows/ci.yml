@@ -20,6 +20,8 @@ jobs:
           override: true
       - name: build (debug, examples)
         run: cargo build --examples
+      - name: test (debug)
+        run: cargo test
       - name: "build `syscalls` example (release)"
         run: cargo build --release --example syscalls
       - name: "integration test (syscalls)"

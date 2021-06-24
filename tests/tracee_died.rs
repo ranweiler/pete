@@ -4,6 +4,17 @@ use anyhow::Result;
 use ntest::timeout;
 use pete::{Error, Ptracer, Restart};
 
+// Support absence of `matches!(0` in rustc 1.41.0.
+macro_rules! assert_matches {
+    ($expr: expr, $pat: pat) => {
+        if let $pat = $expr {
+            // Pass.
+        } else {
+            panic!("expected `{}` to match `{}`", stringify!($expr), stringify!($pat));
+        }
+    }
+}
+
 #[test]
 #[timeout(100)]
 fn test_tracee_died() -> Result<()> {
@@ -19,7 +30,7 @@ fn test_tracee_died() -> Result<()> {
         child.kill()?;
 
         if let Err(err) = tracer.restart(tracee, Restart::Continue) {
-            assert!(matches!(err, Error::Restart { .. }));
+            assert_matches!(err, Error::Restart { .. });
             assert!(err.tracee_died());
 
             let regs = tracee.registers();
@@ -27,7 +38,7 @@ fn test_tracee_died() -> Result<()> {
             assert!(regs.is_err());
 
             if let Err(err) = regs {
-                assert!(matches!(err, Error::TraceeDied { .. }));
+                assert_matches!(err, Error::TraceeDied { .. });
                 assert!(err.tracee_died());
             } else {
                 unreachable!();

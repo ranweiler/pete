@@ -30,7 +30,7 @@ fn test_tracee_died() -> Result<()> {
         child.kill()?;
 
         if let Err(err) = tracer.restart(tracee, Restart::Continue) {
-            assert_matches!(err, Error::Restart { .. });
+            assert_matches!(err, Error::TraceeDied { .. });
             assert!(err.tracee_died());
 
             let regs = tracee.registers();

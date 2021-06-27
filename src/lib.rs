@@ -12,11 +12,13 @@
 //! syscall-enter-stop and syscall-exit-stop, but does not _automatically_ query register state to
 //! identify the specific syscall.
 
-
 #[macro_use]
 pub mod error;
 
 pub mod ptracer;
+
+#[cfg(target_arch = "x86_64")]
+pub mod x86;
 
 #[doc(inline)]
 pub use error::Error;

@@ -14,6 +14,8 @@ use nix::sys::{
 
 use crate::error::{Error, Result, ResultExt};
 
+#[cfg(target_arch = "x86_64")]
+use crate::x86::DebugRegister;
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
@@ -163,6 +165,66 @@ impl Tracee {
         };
 
         Ok(info)
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn debug_register(&self, dr: DebugRegister) -> Result<u64> {
+        let index = 8 * u64::from(dr);
+
+        if let Some(off) = DebugRegister::user_offset().checked_add(index) {
+            self.peek_user(off)
+        } else {
+            internal_error!("unreachable overflow")
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_debug_register(&self, dr: DebugRegister, data: u64) -> Result<()> {
+        let index = 8 * u64::from(dr);
+
+        if let Some(off) = DebugRegister::user_offset().checked_add(index) {
+            self.poke_user(off, data)
+        } else {
+            internal_error!("unreachable overflow")
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    fn peek_user(&self, off: u64) -> Result<u64> {
+        // SAFETY: `off` does not require validation, because it is not actually used as a
+        // pointer offset by the kernel.
+        //
+        // See: https://github.com/torvalds/linux/blob/v4.9/arch/x86/kernel/ptrace.c#L774-L791
+
+        let data = unsafe {
+            libc::ptrace(
+                libc::PTRACE_PEEKUSER,
+                self.pid,
+                off,
+                0,
+            )
+        };
+
+        Ok(data as u64)
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    fn poke_user(&self, off: u64, data: u64) -> Result<()> {
+        // SAFETY: `off` does not require validation, because it is not actually used as a
+        // pointer offset by the kernel.
+        //
+        // See: https://github.com/torvalds/linux/blob/v4.9/arch/x86/kernel/ptrace.c#L774-L791
+
+        unsafe {
+            libc::ptrace(
+                libc::PTRACE_POKEUSER,
+                self.pid,
+                off,
+                data,
+            )
+        };
+
+        Ok(())
     }
 }
 

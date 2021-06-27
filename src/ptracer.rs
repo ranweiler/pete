@@ -211,11 +211,9 @@ impl Ptracer {
                 ptrace::syscall(pid, pending),
         };
 
-        r.map_err(|source| Error::Restart {
-            pid,
-            mode: restart,
-            source,
-        })
+        r.died_if_esrch(pid)?;
+
+        Ok(())
     }
 
     /// Spawn `cmd` for tracing.

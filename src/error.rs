@@ -1,7 +1,7 @@
 //! Custom types for tracing errors.
 use std::io;
 
-use crate::ptracer::{Pid, Restart};
+use crate::ptracer::Pid;
 
 /// Alias for `Result<T, self::Error>`.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -24,9 +24,6 @@ pub enum Error {
         source: nix::Error,
     },
 
-    #[error("Could not restart tracee = {pid} with mode = {mode:?}")]
-    Restart { pid: Pid, mode: Restart, source: nix::Error },
-
     #[error("Tracee died while in ptrace-stop")]
     TraceeDied { pid: Pid, source: nix::Error },
 
@@ -42,14 +39,10 @@ pub enum Error {
 
 impl Error {
     pub fn tracee_died(&self) -> bool {
-        match self {
-            Error::Restart { .. } |
-            Error::TraceeDied { .. } => {
-                true
-            },
-            _ => {
-                false
-            },
+        if let Error::TraceeDied { .. } = self {
+            true
+        } else {
+            false
         }
     }
 }

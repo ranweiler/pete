@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Check `target_arch` before using x86-only features
+- Condition `Register`-related definitions, exports on `target_arch`
 
 ## [0.5.0] - 2021-06-21
 

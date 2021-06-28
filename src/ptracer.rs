@@ -22,6 +22,7 @@ pub use nix::sys::ptrace::Options;
 pub use nix::sys::signal::Signal;
 
 /// Register state of a tracee.
+#[cfg(target_arch = "x86_64")]
 pub type Registers = libc::user_regs_struct;
 
 /// Extra signal info, such as its cause.
@@ -110,10 +111,12 @@ impl Tracee {
         Ok(ptrace::setoptions(self.pid, options).died_if_esrch(self.pid)?)
     }
 
+    #[cfg(target_arch = "x86_64")]
     pub fn registers(&self) -> Result<Registers> {
         Ok(ptrace::getregs(self.pid).died_if_esrch(self.pid)?)
     }
 
+    #[cfg(target_arch = "x86_64")]
     pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
         Ok(ptrace::setregs(self.pid, regs).died_if_esrch(self.pid)?)
     }

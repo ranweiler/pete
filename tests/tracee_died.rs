@@ -4,7 +4,7 @@ use anyhow::Result;
 use ntest::timeout;
 use pete::{Error, Ptracer, Restart};
 
-// Support absence of `matches!(0` in rustc 1.41.0.
+// Support absence of `matches!()` in rustc 1.41.0.
 macro_rules! assert_matches {
     ($expr: expr, $pat: pat) => {
         if let $pat = $expr {
@@ -15,6 +15,7 @@ macro_rules! assert_matches {
     }
 }
 
+#[cfg(target_arch = "x86_64")]
 #[test]
 #[timeout(100)]
 fn test_tracee_died() -> Result<()> {

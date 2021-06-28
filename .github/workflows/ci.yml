@@ -26,3 +26,24 @@ jobs:
         run: cargo build --release --example syscalls
       - name: "integration test (syscalls)"
         run: ./script/syscall-tracepoint-test ./target
+  cross:
+    name: cross-compile (${{ matrix.rust }}-${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+        rust:
+          - stable
+          - 1.41.0
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - name: add target ${{ matrix.rust }}-${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
+      - name: check (debug)
+        run: cargo check --target=${{ matrix.target }}

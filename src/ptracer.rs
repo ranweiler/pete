@@ -40,24 +40,27 @@ pub enum Stop {
     AttachStop,
 
     // signal-delivery-stop
-    SignalDeliveryStop(Signal),
+    SignalDeliveryStop { signal: Signal },
 
     // group-stop
-    GroupStop(Signal),
+    GroupStop { signal: Signal },
 
     // syscall-stops
     SyscallEnterStop,
     SyscallExitStop,
 
     // ptrace-event-stops
-    Clone(Pid),
-    Fork(Pid),
-    Exec(Pid),
-    Exiting(i32),
-    Signaling(Signal, bool),
-    Vfork(Pid),
-    VforkDone(Pid),
-    Seccomp(u16),
+    Clone { new: Pid },
+    Fork { new: Pid },
+    Exec { old: Pid },
+    Exiting { exit_code: i32 },
+    Signaling {
+        signal: Signal,
+        core_dumped: bool,
+    },
+    Vfork { new: Pid },
+    VforkDone { new: Pid },
+    Seccomp { data: u16 },
 }
 
 /// Restart requests, which resume stopped tracees.
@@ -150,7 +153,7 @@ impl Tracee {
     }
 
     pub fn siginfo(&self) -> Result<Option<Siginfo>> {
-        let info = if let Stop::SignalDeliveryStop(..) = self.stop {
+        let info = if let Stop::SignalDeliveryStop { .. } = self.stop {
             Some(ptrace::getsiginfo(self.pid).died_if_esrch(self.pid)?)
         } else {
             None
@@ -302,12 +305,12 @@ impl Ptracer {
 
                     tracee
                 } else {
-                    let stop = Stop::SignalDeliveryStop(SIGTRAP);
+                    let stop = Stop::SignalDeliveryStop { signal: SIGTRAP };
                     Tracee::new(pid, None, stop)
                 }
             },
-            WaitStatus::Stopped(pid, sig) => {
-                if sig == SIGSTOP {
+            WaitStatus::Stopped(pid, signal) => {
+                if signal == SIGSTOP {
                     if let Some(state) = self.tracee_state_mut(pid) {
                         if *state == State::Attaching {
                             *state = State::Traced;
@@ -328,37 +331,37 @@ impl Ptracer {
                     }
                 }
 
-                let stop = if is_group_stop(pid, sig)? {
-                    Stop::GroupStop(sig)
+                let stop = if is_group_stop(pid, signal)? {
+                    Stop::GroupStop { signal }
                 } else {
-                    Stop::SignalDeliveryStop(sig)
+                    Stop::SignalDeliveryStop { signal }
                 };
 
-                Tracee::new(pid, sig, stop)
+                Tracee::new(pid, signal, stop)
             },
-            WaitStatus::PtraceEvent(pid, sig, code) => {
+            WaitStatus::PtraceEvent(pid, signal, code) => {
                 match code {
                     libc::PTRACE_EVENT_FORK => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
-                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
+                        let new = Pid::from_raw(evt_data as u32 as i32);
 
-                        // When we return, `new_pid` will start as a tracee, but will be delivered
-                        // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
-                        self.mark_tracee(new_pid);
+                        // When we return, `new` will start as a tracee, but will be delivered a
+                        // `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
+                        self.mark_tracee(new);
 
-                        let stop = Stop::Fork(new_pid);
-                        Tracee::new(pid, sig, stop)
+                        let stop = Stop::Fork { new };
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_CLONE => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
-                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
+                        let new = Pid::from_raw(evt_data as u32 as i32);
 
-                        // When we return, `new_pid` will start as a tracee, but will be delivered
-                        // a `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
-                        self.mark_tracee(new_pid);
+                        // When we return, `new` will start as a tracee, but will be delivered a
+                        // `SIGSTOP`. Mark it so we can recognize the `SIGSTOP` as an attach-stop.
+                        self.mark_tracee(new);
 
-                        let stop = Stop::Clone(new_pid);
-                        Tracee::new(pid, sig, stop)
+                        let stop = Stop::Clone { new };
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_EXEC => {
                         // We are in one of two cases. The exec has either occurred on the main
@@ -366,26 +369,26 @@ impl Ptracer {
                         // execing thread will be equal to the tgid. In the off-main case, this is
                         // a change, and the old state for the tid == tgid will be invalid.
 
-                        // The current `pid` is now equal to the tgid of `old_pid`.
+                        // The current `pid` is now equal to the tgid of `old`.
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
-                        let old_pid = Pid::from_raw(evt_data as u32 as i32);
+                        let old = Pid::from_raw(evt_data as u32 as i32);
 
-                        if old_pid != pid {
+                        if old != pid {
                             // We exec'd off-thread, and previous tid state is now invalid.
-                            self.remove_tracee(old_pid);
+                            self.remove_tracee(old);
                         }
 
                         // We know we are in a syscall. Make sure we can correctly label the next
                         // syscall-stop as an exit-stop.
                         //
                         // Important: if we trace all the syscall-stops, we will report the syscall-
-                        // enter-stop as occurring on `old_pid`, but its matching syscall-exit-stop
-                        // as occurring on `pid`. This is correct, but might look odd.
+                        // enter-stop as occurring on `old`, but its matching syscall-exit-stop as
+                        // occurring on `pid`. This is correct, but might look odd.
                         self.set_tracee_state(pid, State::Syscalling);
 
-                        let stop = Stop::Exec(old_pid);
+                        let stop = Stop::Exec { old };
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_EXIT => {
                         // In this context, `PTRACE_GETEVENTMSG` returns the pending wait status
@@ -396,33 +399,33 @@ impl Ptracer {
 
                         let stop = match ExitType::parse(status)? {
                             ExitType::Exit(exit_code) =>
-                                Stop::Exiting(exit_code),
-                            ExitType::Signaled(sig, core_dumped) =>
-                                Stop::Signaling(sig, core_dumped),
+                                Stop::Exiting { exit_code },
+                            ExitType::Signaled(signal, core_dumped) =>
+                                Stop::Signaling { signal, core_dumped },
                         };
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_VFORK => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
-                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
-                        self.mark_tracee(new_pid);
+                        let new = Pid::from_raw(evt_data as u32 as i32);
+                        self.mark_tracee(new);
 
-                        let stop = Stop::Vfork(new_pid);
+                        let stop = Stop::Vfork { new };
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_VFORK_DONE => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
-                        let new_pid = Pid::from_raw(evt_data as u32 as i32);
-                        let stop = Stop::VforkDone(new_pid);
+                        let new = Pid::from_raw(evt_data as u32 as i32);
+                        let stop = Stop::VforkDone {new };
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_SECCOMP => {
                         // `SECCOMP_RET_DATA`, which is the low 16 bits of an int.
-                        let ret_data = ptrace::getevent(pid).died_if_esrch(pid)? as u16;
-                        let stop = Stop::Seccomp(ret_data);
+                        let data = ptrace::getevent(pid).died_if_esrch(pid)? as u16;
+                        let stop = Stop::Seccomp { data };
 
                         if let Some(state) = self.tracee_state_mut(pid) {
                             *state = State::Syscalling;
@@ -430,7 +433,7 @@ impl Ptracer {
                             internal_error!("seccomp ptrace-event-stop for non-tracee");
                         }
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_STOP => {
                         // Unreachable by us, since we do not expose `PTRACE_SEIZE` &c.

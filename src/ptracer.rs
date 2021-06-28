@@ -336,7 +336,7 @@ impl Ptracer {
 
                 Tracee::new(pid, sig, stop)
             },
-            WaitStatus::PtraceEvent(pid, sig, code) => {
+            WaitStatus::PtraceEvent(pid, signal, code) => {
                 match code {
                     libc::PTRACE_EVENT_FORK => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
@@ -347,7 +347,7 @@ impl Ptracer {
                         self.mark_tracee(new_pid);
 
                         let stop = Stop::Fork(new_pid);
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_CLONE => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
@@ -358,7 +358,7 @@ impl Ptracer {
                         self.mark_tracee(new_pid);
 
                         let stop = Stop::Clone(new_pid);
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_EXEC => {
                         // We are in one of two cases. The exec has either occurred on the main
@@ -385,7 +385,7 @@ impl Ptracer {
 
                         let stop = Stop::Exec(old_pid);
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_EXIT => {
                         // In this context, `PTRACE_GETEVENTMSG` returns the pending wait status
@@ -401,7 +401,7 @@ impl Ptracer {
                                 Stop::Signaling(sig, core_dumped),
                         };
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_VFORK => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
@@ -410,14 +410,14 @@ impl Ptracer {
 
                         let stop = Stop::Vfork(new_pid);
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_VFORK_DONE => {
                         let evt_data = ptrace::getevent(pid).died_if_esrch(pid)?;
                         let new_pid = Pid::from_raw(evt_data as u32 as i32);
                         let stop = Stop::VforkDone(new_pid);
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_SECCOMP => {
                         // `SECCOMP_RET_DATA`, which is the low 16 bits of an int.
@@ -430,7 +430,7 @@ impl Ptracer {
                             internal_error!("seccomp ptrace-event-stop for non-tracee");
                         }
 
-                        Tracee::new(pid, sig, stop)
+                        Tracee::new(pid, signal, stop)
                     },
                     libc::PTRACE_EVENT_STOP => {
                         // Unreachable by us, since we do not expose `PTRACE_SEIZE` &c.

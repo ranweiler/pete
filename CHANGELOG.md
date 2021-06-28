@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Hide accidentally-`pub` marker field `Tracee._not_send`
 - Remove `Error::Restart`, replace only use with `TraceeDied`
+- Remove redundant PIDs from `Stop` variants
 
 ### Fixed
 

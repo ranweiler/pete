@@ -7,20 +7,28 @@
 /// See: Intel SDM, Vol. 3, 17.2
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DebugRegister {
-    // Debug address registers.
+    /// Debug address register 0.
     Dr0 = 0,
+
+    /// Debug address register 1.
     Dr1,
+
+    /// Debug address register 2.
     Dr2,
+
+    /// Debug address register 3.
     Dr3,
 
-    // Reserved. Use causes invalid opcode exception.
+    /// Reserved. Use causes invalid opcode exception.
     Dr4,
+
+    /// Reserved. Use causes invalid opcode exception.
     Dr5,
 
-    // Debug status register.
+    /// Debug status register.
     Dr6,
 
-    // Debug control register.
+    /// Debug control register.
     Dr7,
 }
 

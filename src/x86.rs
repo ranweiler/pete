@@ -1,7 +1,8 @@
-/// Debug registers are used to control and query processor debug operations and state.
-/// Accessing them directly is a privileged operation, but a tracee's debug registers are
-/// accessible via the `PEEKUSER` and `POKEUSER` requests. The debug-relevant subset of
-/// possible `USER` requests are available via `Tracee::debug_register()` and
+/// Register used to control or query hardware debug operations and state.
+///
+/// Accessing debug registers directly is a privileged operation, but a tracee's debug
+/// registers are accessible via the `PEEKUSER` and `POKEUSER` requests. The relevant
+/// subset of possible `USER` requests are available via `Tracee::debug_register()` and
 /// `Tracee::set_debug_register()`.
 ///
 /// See: Intel SDM, Vol. 3, 17.2
@@ -19,10 +20,10 @@ pub enum DebugRegister {
     /// Debug address register 3.
     Dr3,
 
-    /// Reserved. Use causes invalid opcode exception.
+    /// Reserved. Ignored when used via `ptrace(2)`.
     Dr4,
 
-    /// Reserved. Use causes invalid opcode exception.
+    /// Reserved. Ignored when used via `ptrace(2)`.
     Dr5,
 
     /// Debug status register.

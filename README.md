@@ -4,12 +4,15 @@ A friendly wrapper around the Linux `ptrace(2)` syscall.
 
 ## Requirements
 
-The minimum supported OS and compiler versions are:
+The current minimum supported OS and compiler versions are:
 
 - Linux 4.8
 - rustc 1.41.0
 
-Support for earlier Linux versions is possible, but would require additional effort.
+Continuous testing is only run for `x86_64-unknown-linux-gnu`.
+
+Support for earlier Linux versions is possible, but low priority. Eventually, we would
+like to support any platform that provides `ptrace(2)`.
 
 ## Summary
 

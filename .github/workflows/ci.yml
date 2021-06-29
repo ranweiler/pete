@@ -4,7 +4,8 @@ on: [push, pull_request]
 
 jobs:
   ci:
-    name: ci (${{ matrix.rust }})
+    name: CI (${{ matrix.rust }})
+    needs: ci-deps
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,16 +19,24 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
+      - name: download deps
+        uses: actions/download-artifact@v2
+        with:
+          name: nop.exe
+      - name: set up deps
+        run: chmod +x nop.exe
       - name: build (debug, examples)
         run: cargo build --examples
       - name: test (debug)
         run: cargo test
-      - name: "build `syscalls` example (release)"
-        run: cargo build --release --example syscalls
+      - name: "build examples (release)"
+        run: cargo build --release --examples
       - name: "integration test (syscalls)"
         run: ./script/syscall-tracepoint-test ./target
+      - name: "integration test (hw-breakpoints)"
+        run: ./script/hw-breakpoint-test ./target ./nop.exe
   cross:
-    name: cross-compile (${{ matrix.rust }}-${{ matrix.target }})
+    name: Cross-compile (${{ matrix.rust }}-${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -47,3 +56,16 @@ jobs:
         run: rustup target add ${{ matrix.target }}
       - name: check (debug)
         run: cargo check --target=${{ matrix.target }}
+  ci-deps:
+    name: CI dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build test-programs
+        run: cd test-programs && ./build-all.sh
+      - name: upload test-programs
+        uses: actions/upload-artifact@v2
+        with:
+          name: nop.exe
+          path: ./test-programs/nop/nop.exe
+          retention-days: 1

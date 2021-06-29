@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -ex -o pipefail
+
+SCRIPT_DIR=$(readlink -f $(dirname "$0"))
+BUILD_ROOT=$(readlink -f $1)
+HW_BREAK_EX="${BUILD_ROOT}/release/examples/hw_break"
+
+do_test() {
+    EXE=$(readlink -f $1)
+
+    # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
+    file $EXE | grep -iv 'pie executable'
+
+    # Get the entry point of $EXE, as a VA in the format `0x%x`.
+    EA=$(readelf -h $EXE | grep Entry | grep -Eo '0x.+$' | tr -d ' ')
+
+    OUTPUT=$($HW_BREAK_EX -q -b $EA -- $EXE)
+
+    echo $OUTPUT | grep "hit breakpoint: ${EA}"
+}
+
+main() {
+    do_test $2
+}
+
+main $@

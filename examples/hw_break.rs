@@ -52,7 +52,7 @@ fn main() -> Result<()> {
             println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
         }
 
-        if let Stop::SignalDeliveryStop { signal: Signal::SIGTRAP } = stop {
+        if let Stop::SignalDelivery { signal: Signal::SIGTRAP } = stop {
             if pc == opt.breakpoint {
                 hit = true;
             }

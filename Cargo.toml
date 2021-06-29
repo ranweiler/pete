@@ -7,6 +7,9 @@ license = "ISC"
 readme = "README.md"
 repository = "https://github.com/ranweiler/pete"
 description = "A friendly wrapper around ptrace(2)"
+include = [
+    "src/",
+]
 
 [dependencies]
 libc = "0.2.66"

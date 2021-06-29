@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove `Error::Restart`, replace only use with `TraceeDied`
 - Remove redundant PIDs from `Stop` variants
 - Use named fields for `Stop` variants with data
+- Remove redundant suffix from some `Stop` variant idents
 
 ### Fixed
 

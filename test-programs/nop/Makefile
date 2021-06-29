@@ -4,7 +4,7 @@ CFLAGS = -fno-pie
 all: nop.exe
 
 nop.exe: nop.c
-	$(CC) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@
 
 .PHONY: clean
 clean:

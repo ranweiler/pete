@@ -40,17 +40,17 @@ const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 /// stops.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Stop {
-    AttachStop,
+    Attach,
 
     // signal-delivery-stop
-    SignalDeliveryStop { signal: Signal },
+    SignalDelivery { signal: Signal },
 
     // group-stop
-    GroupStop { signal: Signal },
+    Group { signal: Signal },
 
     // syscall-stops
-    SyscallEnterStop,
-    SyscallExitStop,
+    SyscallEnter,
+    SyscallExit,
 
     // ptrace-event-stops
     Clone { new: Pid },
@@ -158,7 +158,7 @@ impl Tracee {
     }
 
     pub fn siginfo(&self) -> Result<Option<Siginfo>> {
-        let info = if let Stop::SignalDeliveryStop { .. } = self.stop {
+        let info = if let Stop::SignalDelivery { .. } = self.stop {
             Some(ptrace::getsiginfo(self.pid).died_if_esrch(self.pid)?)
         } else {
             None
@@ -358,7 +358,7 @@ impl Ptracer {
                     // `PTRACE_O_TRACEEXEC` is not set by default, so it is not set when the child
                     // requests the attach. We will thus see its exec as a `SIGTRAP`, no matter what
                     // is set in `self.options`.
-                    let stop = Stop::SyscallExitStop;
+                    let stop = Stop::SyscallExit;
                     let mut tracee = Tracee::new(pid, None, stop);
 
                     // Update the tracee state so subsequent traps are interpreted correctly.
@@ -370,7 +370,7 @@ impl Ptracer {
 
                     tracee
                 } else {
-                    let stop = Stop::SignalDeliveryStop { signal: SIGTRAP };
+                    let stop = Stop::SignalDelivery { signal: SIGTRAP };
                     Tracee::new(pid, None, stop)
                 }
             },
@@ -379,7 +379,7 @@ impl Ptracer {
                     if let Some(state) = self.tracee_state_mut(pid) {
                         if *state == State::Attaching {
                             *state = State::Traced;
-                            let stop = Stop::AttachStop;
+                            let stop = Stop::Attach;
                             let tracee = Tracee::new(pid, None, stop);
                             return Ok(Some(tracee));
                         }
@@ -390,16 +390,16 @@ impl Ptracer {
                         // only exists to let us know that the next stop (i.e. this stop) is an
                         // attach-stop, we can directly initialize this tracee as `Traced`.
                         self.set_tracee_state(pid, State::Traced);
-                        let stop = Stop::AttachStop;
+                        let stop = Stop::Attach;
                         let tracee = Tracee::new(pid, None, stop);
                         return Ok(Some(tracee));
                     }
                 }
 
                 let stop = if is_group_stop(pid, signal)? {
-                    Stop::GroupStop { signal }
+                    Stop::Group { signal }
                 } else {
-                    Stop::SignalDeliveryStop { signal }
+                    Stop::SignalDelivery { signal }
                 };
 
                 Tracee::new(pid, signal, stop)
@@ -543,11 +543,11 @@ impl Ptracer {
                         match state {
                             State::Syscalling => {
                                 *state = State::Traced;
-                                Stop::SyscallExitStop
+                                Stop::SyscallExit
                             },
                             State::Traced => {
                                 *state = State::Syscalling;
-                                Stop::SyscallEnterStop
+                                Stop::SyscallEnter
                             },
                             State::Attaching => {
                                 // A tracee in this state is waiting for a `SIGSTOP`, which is an

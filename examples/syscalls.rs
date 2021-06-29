@@ -54,8 +54,7 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
     let pc = regs.rip as u64;
 
     match tracee.stop {
-        Stop::SyscallEnterStop |
-        Stop::SyscallExitStop => {
+        Stop::SyscallEnter | Stop::SyscallExit => {
             let syscallno = regs.orig_rax;
             let syscall = SYSCALL_TABLE
                 .get(&syscallno)
@@ -76,10 +75,10 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
 
 fn on_stop_tsv(tracee: &mut Tracee) -> Result<()> {
     match tracee.stop {
-        Stop::SyscallEnterStop => {
+        Stop::SyscallEnter => {
             on_syscall_stop_tsv(tracee, true)?;
         }
-        Stop::SyscallExitStop => {
+        Stop::SyscallExit => {
             on_syscall_stop_tsv(tracee, false)?;
         }
         _ => {},

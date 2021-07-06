@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.6.0] - 2021-06-28
+
+### Added
+
 - `Error::TraceeDied` variant, `Error::tracee_died()` method to improve error ergonomics
 - x86 `Tracee` methods for reading and writing debug registers
 

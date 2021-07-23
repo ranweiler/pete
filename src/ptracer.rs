@@ -24,11 +24,15 @@ pub use nix::sys::ptrace::Options;
 pub use nix::sys::signal::Signal;
 
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-static PTRACE_GETREGSET: i32 = 0x4204;
+const PTRACE_GETREGSET: i32 = 0x4204;
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-static PTRACE_SETREGSET: i32 = 0x4205;
+const PTRACE_SETREGSET: i32 = 0x4205;
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-static NT_PRSTATUS: i32 = 0x1;
+const NT_PRSTATUS: i32 = 0x1;
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+const NT_ARM_HW_BREAK: i32 = 0x402;
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+const NT_ARM_HW_WATCH: i32 = 0x403;
 
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
 #[repr(C)]
@@ -38,6 +42,32 @@ pub struct user_pt_regs {
     pub sp: u64,
     pub pc: u64,
     pub pstate: u64
+}
+
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct user_hwdebug_state_reg {
+    pub addr: u64,
+    pub ctrl: u32,
+    pad: u32,
+}
+
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[repr(i32)]
+#[derive(Copy, Clone)]
+pub enum DebugRegisterType {
+    Break = NT_ARM_HW_BREAK,
+    Watch = NT_ARM_HW_WATCH,
+}
+
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct user_hwdebug_state {
+    pub dbg_info: u32,
+    pad: u32,
+    pub dbg_regs: [user_hwdebug_state_reg; 16],
 }
 
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
@@ -240,6 +270,24 @@ impl Tracee {
         }
     }
 
+    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    pub fn debug_register(&self, regtype: DebugRegisterType, index: usize) -> Result<user_hwdebug_state_reg> {
+        assert!(index < 16);
+        let mut data = std::mem::MaybeUninit::uninit();
+        let mut rv = regsvec {
+            ufb: &mut data as *mut _ as *mut libc::c_void,
+            len: std::mem::size_of::<user_hwdebug_state>(),
+        };
+        let res = unsafe {
+            libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+        };
+
+        nix::errno::Errno::result(res)?;
+
+        let state: user_hwdebug_state = unsafe { data.assume_init() };
+        Ok(state.dbg_regs[index])
+    }
+
     #[cfg(target_arch = "x86_64")]
     pub fn set_debug_register(&self, dr: DebugRegister, data: u64) -> Result<()> {
         let index = 8 * u64::from(dr);
@@ -249,6 +297,32 @@ impl Tracee {
         } else {
             internal_error!("unreachable overflow")
         }
+    }
+
+    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    pub fn set_debug_register(&self, regtype: DebugRegisterType, index: usize, data: user_hwdebug_state_reg) -> Result<()> {
+        assert!(index < 16);
+        let mut registers = std::mem::MaybeUninit::uninit();
+        let mut rv = regsvec {
+            ufb: &mut registers as *mut _ as *mut libc::c_void,
+            len: std::mem::size_of::<user_hwdebug_state>(),
+        };
+        let res = unsafe {
+            libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+        };
+
+        nix::errno::Errno::result(res)?;
+
+        let mut state: user_hwdebug_state = unsafe { registers.assume_init() };
+        state.dbg_regs[index] = data;
+
+        let res = unsafe {
+            libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+        };
+
+        nix::errno::Errno::result(res)?;
+
+        Ok(())
     }
 
     #[cfg(target_arch = "x86_64")]

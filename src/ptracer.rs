@@ -44,7 +44,7 @@ const NT_ARM_HW_WATCH: i32 = 0x403;
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct user_pt_regs {
-    pub regs: [u64; 31usize],
+    pub regs: [u64; 31],
     pub sp: u64,
     pub pc: u64,
     pub pstate: u64
@@ -53,11 +53,13 @@ pub struct user_pt_regs {
 #[cfg(target_arch = "aarch64")]
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
+// Nested, untagged struct declaration in `user_hwdebug_state`.
 pub struct user_hwdebug_state_reg {
     pub addr: u64,
     pub ctrl: u32,
     pad: u32,
 }
+
 #[cfg(target_arch = "aarch64")]
 impl user_hwdebug_state_reg {
     pub fn new(addr: u64, ctrl: u32) -> Self {

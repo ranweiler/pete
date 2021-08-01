@@ -25,18 +25,18 @@ pub use nix::sys::ptrace::Options;
 /// POSIX signal.
 pub use nix::sys::signal::Signal;
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 const PTRACE_GETREGSET: i32 = 0x4204;
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 const PTRACE_SETREGSET: i32 = 0x4205;
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 const NT_PRSTATUS: i32 = 0x1;
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 const NT_ARM_HW_BREAK: i32 = 0x402;
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 const NT_ARM_HW_WATCH: i32 = 0x403;
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct user_pt_regs {
@@ -46,7 +46,7 @@ pub struct user_pt_regs {
     pub pstate: u64
 }
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct user_hwdebug_state_reg {
@@ -73,7 +73,7 @@ pub enum DebugRegisterType {
     Watch = NT_ARM_HW_WATCH,
 }
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct user_hwdebug_state {
@@ -82,7 +82,7 @@ pub struct user_hwdebug_state {
     pub dbg_regs: [user_hwdebug_state_reg; 4],
 }
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[repr(C)]
 struct regsvec {
     ufb: *mut libc::c_void,
@@ -90,7 +90,7 @@ struct regsvec {
 }
 
 /// Register state of a tracee.
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 pub type Registers = user_pt_regs;
 
 /// Register state of a tracee.
@@ -188,7 +188,7 @@ impl Tracee {
         Ok(ptrace::getregs(self.pid).died_if_esrch(self.pid)?)
     }
 
-    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    #[cfg(target_arch = "aarch64")]
     pub fn registers(&self) -> Result<Registers> {
 
         let mut data = std::mem::MaybeUninit::uninit();
@@ -211,7 +211,7 @@ impl Tracee {
         Ok(ptrace::setregs(self.pid, regs).died_if_esrch(self.pid)?)
     }
 
-    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    #[cfg(target_arch = "aarch64")]
     pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
         let mut rv = regsvec {
             ufb: &regs as *const _ as *const libc::c_void as *mut libc::c_void,
@@ -282,7 +282,7 @@ impl Tracee {
         }
     }
 
-    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    #[cfg(target_arch = "aarch64")]
     pub fn debug_register(&self, regtype: DebugRegisterType, index: usize) -> Result<user_hwdebug_state_reg> {
         assert!(index < 16);
         let mut data = std::mem::MaybeUninit::uninit();
@@ -312,7 +312,7 @@ impl Tracee {
         }
     }
 
-    #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+    #[cfg(target_arch = "aarch64")]
     pub fn set_debug_register(&self, regtype: DebugRegisterType, index: usize, data: user_hwdebug_state_reg) -> Result<()> {
         assert!(index < 16);
         let mut registers = std::mem::MaybeUninit::uninit();

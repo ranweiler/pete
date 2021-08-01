@@ -25,10 +25,14 @@ pub use nix::sys::ptrace::Options;
 /// POSIX signal.
 pub use nix::sys::signal::Signal;
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
 const PTRACE_GETREGSET: i32 = 0x4204;
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(not(target_os = "android"), target_arch = "aarch64"))]
+const PTRACE_GETREGSET: u32 = 0x4204;
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
 const PTRACE_SETREGSET: i32 = 0x4205;
+#[cfg(all(not(target_os = "android"), target_arch = "aarch64"))]
+const PTRACE_SETREGSET: u32 = 0x4205;
 #[cfg(target_arch = "aarch64")]
 const NT_PRSTATUS: i32 = 0x1;
 #[cfg(target_arch = "aarch64")]

@@ -86,13 +86,6 @@ pub struct user_hwdebug_state {
     pub dbg_regs: [user_hwdebug_state_reg; 4],
 }
 
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-struct regsvec {
-    ufb: *mut libc::c_void,
-    len: usize,
-}
-
 /// Register state of a tracee.
 #[cfg(target_arch = "aarch64")]
 pub type Registers = user_pt_regs;
@@ -196,9 +189,9 @@ impl Tracee {
     pub fn registers(&self) -> Result<Registers> {
 
         let mut data = std::mem::MaybeUninit::uninit();
-        let mut rv = regsvec {
-            ufb: &mut data as *mut _ as *mut libc::c_void,
-            len: std::mem::size_of::<Registers>(),
+        let mut rv = libc::iovec {
+            iov_base: &mut data as *mut _ as *mut libc::c_void,
+            iov_len: std::mem::size_of::<Registers>(),
         };
 
         let res = unsafe {
@@ -217,9 +210,9 @@ impl Tracee {
 
     #[cfg(target_arch = "aarch64")]
     pub fn set_registers(&mut self, regs: Registers) -> Result<()> {
-        let mut rv = regsvec {
-            ufb: &regs as *const _ as *const libc::c_void as *mut libc::c_void,
-            len: std::mem::size_of::<Registers>(),
+        let mut rv = libc::iovec {
+            iov_base: &regs as *const _ as *const libc::c_void as *mut libc::c_void,
+            iov_len: std::mem::size_of::<Registers>(),
         };
 
         let res = unsafe {
@@ -288,11 +281,11 @@ impl Tracee {
 
     #[cfg(target_arch = "aarch64")]
     pub fn debug_register(&self, regtype: DebugRegisterType, index: usize) -> Result<user_hwdebug_state_reg> {
-        assert!(index < 16);
+        assert!(index < 4);
         let mut data = std::mem::MaybeUninit::uninit();
-        let mut rv = regsvec {
-            ufb: &mut data as *mut _ as *mut libc::c_void,
-            len: std::mem::size_of::<user_hwdebug_state>(),
+        let mut rv = libc::iovec {
+            iov_base: &mut data as *mut _ as *mut libc::c_void,
+            iov_len: std::mem::size_of::<user_hwdebug_state>(),
         };
         let res = unsafe {
             libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
@@ -318,11 +311,11 @@ impl Tracee {
 
     #[cfg(target_arch = "aarch64")]
     pub fn set_debug_register(&self, regtype: DebugRegisterType, index: usize, data: user_hwdebug_state_reg) -> Result<()> {
-        assert!(index < 16);
+        assert!(index < 4);
         let mut registers = std::mem::MaybeUninit::uninit();
-        let mut rv = regsvec {
-            ufb: &mut registers as *mut _ as *mut libc::c_void,
-            len: std::mem::size_of::<user_hwdebug_state>(),
+        let mut rv = libc::iovec {
+            iov_base: &mut registers as *mut _ as *mut libc::c_void,
+            iov_len: std::mem::size_of::<user_hwdebug_state>(),
         };
         let res = unsafe {
             libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
@@ -334,9 +327,9 @@ impl Tracee {
 
         state.dbg_regs[index] = data;
 
-        let mut rv = regsvec {
-            ufb: &mut state as *mut _ as *mut libc::c_void,
-            len: std::mem::size_of::<user_hwdebug_state>(),
+        let mut rv = libc::iovec {
+            iov_base: &mut state as *mut _ as *mut libc::c_void,
+            iov_len: std::mem::size_of::<user_hwdebug_state>(),
         };
         let res = unsafe {
             libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)

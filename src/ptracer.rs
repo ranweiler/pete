@@ -16,6 +16,8 @@ use crate::error::{Error, Result, ResultExt};
 
 #[cfg(target_arch = "x86_64")]
 use crate::x86::DebugRegister;
+#[cfg(target_arch = "aarch64")]
+pub type DebugRegister = user_hwdebug_state_reg;
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
@@ -52,8 +54,18 @@ pub struct user_hwdebug_state_reg {
     pub ctrl: u32,
     pad: u32,
 }
+#[cfg(target_arch = "aarch64")]
+impl user_hwdebug_state_reg {
+    pub fn new(addr: u64, ctrl: u32) -> Self {
+        Self {
+            addr,
+            ctrl,
+            pad: 0,
+        }
+    }
+}
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+#[cfg(target_arch = "aarch64")]
 #[repr(i32)]
 #[derive(Copy, Clone)]
 pub enum DebugRegisterType {
@@ -67,7 +79,7 @@ pub enum DebugRegisterType {
 pub struct user_hwdebug_state {
     pub dbg_info: u32,
     pad: u32,
-    pub dbg_regs: [user_hwdebug_state_reg; 16],
+    pub dbg_regs: [user_hwdebug_state_reg; 4],
 }
 
 #[cfg(all(target_os = "android", target_arch = "aarch64"))]
@@ -282,6 +294,7 @@ impl Tracee {
             libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
+
         nix::errno::Errno::result(res)?;
 
         let state: user_hwdebug_state = unsafe { data.assume_init() };
@@ -314,8 +327,13 @@ impl Tracee {
         nix::errno::Errno::result(res)?;
 
         let mut state: user_hwdebug_state = unsafe { registers.assume_init() };
+
         state.dbg_regs[index] = data;
 
+        let mut rv = regsvec {
+            ufb: &mut state as *mut _ as *mut libc::c_void,
+            len: std::mem::size_of::<user_hwdebug_state>(),
+        };
         let res = unsafe {
             libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
@@ -478,6 +496,9 @@ impl Ptracer {
             WaitStatus::Signaled(pid, _sig, _is_core_dump) => {
                 self.remove_tracee(pid);
                 return self.wait();
+            },
+            WaitStatus::Stopped(pid, SIGINT) => {
+                Tracee::new(pid, None, Stop::SignalDelivery { signal: SIGINT })
             },
             WaitStatus::Stopped(pid, SIGTRAP) => {
                 let state = self.tracee_state_mut(pid);

@@ -17,7 +17,7 @@ use crate::error::{Error, Result, ResultExt};
 #[cfg(target_arch = "x86_64")]
 use crate::x86::DebugRegister;
 #[cfg(target_arch = "aarch64")]
-pub type DebugRegister = user_hwdebug_state_reg;
+pub type DebugRegisters = user_hwdebug_state;
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
@@ -62,10 +62,10 @@ pub struct user_hwdebug_state_reg {
 
 #[cfg(target_arch = "aarch64")]
 impl user_hwdebug_state_reg {
-    pub fn new(addr: u64, ctrl: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            addr,
-            ctrl,
+            addr: 0,
+            ctrl: 0,
             pad: 0,
         }
     }
@@ -86,6 +86,17 @@ pub struct user_hwdebug_state {
     pub dbg_info: u32,
     pad: u32,
     pub dbg_regs: [user_hwdebug_state_reg; 4],
+}
+
+#[cfg(target_arch = "aarch64")]
+impl user_hwdebug_state {
+    pub fn new() -> Self {
+        Self {
+            dbg_info: 0,
+            pad: 0,
+            dbg_regs: [user_hwdebug_state_reg::new(); 4],
+        }
+    }
 }
 
 /// Register state of a tracee.
@@ -282,8 +293,7 @@ impl Tracee {
     }
 
     #[cfg(target_arch = "aarch64")]
-    pub fn debug_register(&self, regtype: DebugRegisterType, index: usize) -> Result<user_hwdebug_state_reg> {
-        assert!(index < 4);
+    pub fn debug_registers(&self, regtype: DebugRegisterType) -> Result<DebugRegisters> {
         let mut data = std::mem::MaybeUninit::uninit();
         let mut rv = libc::iovec {
             iov_base: &mut data as *mut _ as *mut libc::c_void,
@@ -296,8 +306,7 @@ impl Tracee {
 
         nix::errno::Errno::result(res)?;
 
-        let state: user_hwdebug_state = unsafe { data.assume_init() };
-        Ok(state.dbg_regs[index])
+        Ok(unsafe { data.assume_init() })
     }
 
     #[cfg(target_arch = "x86_64")]
@@ -312,23 +321,7 @@ impl Tracee {
     }
 
     #[cfg(target_arch = "aarch64")]
-    pub fn set_debug_register(&self, regtype: DebugRegisterType, index: usize, data: user_hwdebug_state_reg) -> Result<()> {
-        assert!(index < 4);
-        let mut registers = std::mem::MaybeUninit::uninit();
-        let mut rv = libc::iovec {
-            iov_base: &mut registers as *mut _ as *mut libc::c_void,
-            iov_len: std::mem::size_of::<user_hwdebug_state>(),
-        };
-        let res = unsafe {
-            libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
-        };
-
-        nix::errno::Errno::result(res)?;
-
-        let mut state: user_hwdebug_state = unsafe { registers.assume_init() };
-
-        state.dbg_regs[index] = data;
-
+    pub fn set_debug_registers(&self, regtype: DebugRegisterType, mut state: DebugRegisters) -> Result<()> {
         let mut rv = libc::iovec {
             iov_base: &mut state as *mut _ as *mut libc::c_void,
             iov_len: std::mem::size_of::<user_hwdebug_state>(),

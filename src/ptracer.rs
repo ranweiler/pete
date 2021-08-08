@@ -303,7 +303,6 @@ impl Tracee {
             libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
-
         nix::errno::Errno::result(res)?;
 
         Ok(unsafe { data.assume_init() })

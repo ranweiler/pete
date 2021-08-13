@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.7.0] - 2021-08-12
+
+### Added
+
+- Support for register access (including debug registers) on `aarch64`
+
+### Changed
+
+- MSRV is now 1.46.0
+- Update `libc` lower bound to `0.2.99`
+- Update `nix` lower bound to `0.22.0`
+
+### Fixed
+
 ## [0.6.0] - 2021-06-28
 
 ### Added

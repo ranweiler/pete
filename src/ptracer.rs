@@ -14,10 +14,17 @@ use nix::sys::{
 
 use crate::error::{Error, Result, ResultExt};
 
-#[cfg(target_arch = "x86_64")]
-use crate::x86::DebugRegister;
 #[cfg(target_arch = "aarch64")]
-pub type DebugRegisters = user_hwdebug_state;
+use crate::aarch64::{self, PTRACE_GETREGSET, PTRACE_SETREGSET};
+
+#[cfg(target_arch = "x86_64")]
+use crate::x86;
+
+#[cfg(target_arch = "x86_64")]
+use x86::DebugRegister;
+
+#[cfg(target_arch = "aarch64")]
+pub type DebugRegisters = aarch64::user_hwdebug_state;
 
 pub use nix::unistd::Pid;
 pub use nix::sys::ptrace::Options;
@@ -25,83 +32,9 @@ pub use nix::sys::ptrace::Options;
 /// POSIX signal.
 pub use nix::sys::signal::Signal;
 
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
-const PTRACE_GETREGSET: i32 = 0x4204;
-#[cfg(all(not(target_os = "android"), target_arch = "aarch64"))]
-const PTRACE_GETREGSET: u32 = 0x4204;
-#[cfg(all(target_os = "android", target_arch = "aarch64"))]
-const PTRACE_SETREGSET: i32 = 0x4205;
-#[cfg(all(not(target_os = "android"), target_arch = "aarch64"))]
-const PTRACE_SETREGSET: u32 = 0x4205;
-#[cfg(target_arch = "aarch64")]
-const NT_PRSTATUS: i32 = 0x1;
-#[cfg(target_arch = "aarch64")]
-const NT_ARM_HW_BREAK: i32 = 0x402;
-#[cfg(target_arch = "aarch64")]
-const NT_ARM_HW_WATCH: i32 = 0x403;
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct user_pt_regs {
-    pub regs: [u64; 31],
-    pub sp: u64,
-    pub pc: u64,
-    pub pstate: u64
-}
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-// Nested, untagged struct declaration in `user_hwdebug_state`.
-pub struct user_hwdebug_state_reg {
-    pub addr: u64,
-    pub ctrl: u32,
-    pad: u32,
-}
-
-#[cfg(target_arch = "aarch64")]
-impl user_hwdebug_state_reg {
-    pub fn new() -> Self {
-        Self {
-            addr: 0,
-            ctrl: 0,
-            pad: 0,
-        }
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-#[repr(i32)]
-#[derive(Copy, Clone)]
-pub enum DebugRegisterType {
-    Break = NT_ARM_HW_BREAK,
-    Watch = NT_ARM_HW_WATCH,
-}
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct user_hwdebug_state {
-    pub dbg_info: u32,
-    pad: u32,
-    pub dbg_regs: [user_hwdebug_state_reg; 4],
-}
-
-#[cfg(target_arch = "aarch64")]
-impl user_hwdebug_state {
-    pub fn new() -> Self {
-        Self {
-            dbg_info: 0,
-            pad: 0,
-            dbg_regs: [user_hwdebug_state_reg::new(); 4],
-        }
-    }
-}
-
 /// Register state of a tracee.
 #[cfg(target_arch = "aarch64")]
-pub type Registers = user_pt_regs;
+pub type Registers = aarch64::user_pt_regs;
 
 /// Register state of a tracee.
 #[cfg(target_arch = "x86_64")]
@@ -111,6 +44,9 @@ pub type Registers = libc::user_regs_struct;
 pub type Siginfo = libc::siginfo_t;
 
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
+
+/// Linux constant defined in `include/uapi/linux/elf.h`.
+const NT_PRSTATUS: i32 = 0x1;
 
 /// A _ptrace-stop_, a tracee state in which it is stopped and ready to accept ptrace
 /// commands.
@@ -293,11 +229,11 @@ impl Tracee {
     }
 
     #[cfg(target_arch = "aarch64")]
-    pub fn debug_registers(&self, regtype: DebugRegisterType) -> Result<DebugRegisters> {
+    pub fn debug_registers(&self, regtype: aarch64::DebugRegisterType) -> Result<DebugRegisters> {
         let mut data = std::mem::MaybeUninit::uninit();
         let mut rv = libc::iovec {
             iov_base: &mut data as *mut _ as *mut libc::c_void,
-            iov_len: std::mem::size_of::<user_hwdebug_state>(),
+            iov_len: std::mem::size_of::<aarch64::user_hwdebug_state>(),
         };
         let res = unsafe {
             libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
@@ -320,10 +256,10 @@ impl Tracee {
     }
 
     #[cfg(target_arch = "aarch64")]
-    pub fn set_debug_registers(&self, regtype: DebugRegisterType, mut state: DebugRegisters) -> Result<()> {
+    pub fn set_debug_registers(&self, regtype: aarch64::DebugRegisterType, mut state: DebugRegisters) -> Result<()> {
         let mut rv = libc::iovec {
             iov_base: &mut state as *mut _ as *mut libc::c_void,
-            iov_len: std::mem::size_of::<user_hwdebug_state>(),
+            iov_len: std::mem::size_of::<aarch64::user_hwdebug_state>(),
         };
         let res = unsafe {
             libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)

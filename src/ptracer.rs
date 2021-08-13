@@ -7,9 +7,12 @@ use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
 
-use nix::sys::{
-    ptrace,
-    wait::{self, WaitPidFlag, WaitStatus},
+use nix::{
+    errno::Errno,
+    sys::{
+        ptrace,
+        wait::{self, WaitPidFlag, WaitStatus},
+    },
 };
 
 use crate::error::{Error, Result, ResultExt};
@@ -148,7 +151,7 @@ impl Tracee {
             libc::ptrace(libc::PTRACE_GETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
         };
 
-        nix::errno::Errno::result(res)?;
+        Errno::result(res)?;
 
         Ok( unsafe { data.assume_init() } )
     }
@@ -169,7 +172,7 @@ impl Tracee {
             libc::ptrace(libc::PTRACE_SETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
         };
 
-        nix::errno::Errno::result(res)?;
+        Errno::result(res)?;
 
         Ok(())
     }
@@ -240,7 +243,7 @@ impl Tracee {
             libc::ptrace(libc::PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
-        nix::errno::Errno::result(res)?;
+        Errno::result(res)?;
 
         Ok(unsafe { data.assume_init() })
     }
@@ -266,7 +269,7 @@ impl Tracee {
             libc::ptrace(libc::PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
-        nix::errno::Errno::result(res)?;
+        Errno::result(res)?;
 
         Ok(())
     }
@@ -373,7 +376,7 @@ impl Ptracer {
     pub fn spawn(&mut self, mut cmd: Command) -> Result<Child> {
         // On fork, request `PTRACE_TRACEME`.
         unsafe {
-            cmd.pre_exec(|| ptrace::traceme().map_err(as_ioerror))
+            cmd.pre_exec(|| ptrace::traceme().map_err(|err| io::Error::from_raw_os_error(err as i32)))
         };
 
         let child = cmd.spawn()?;
@@ -409,7 +412,7 @@ impl Ptracer {
         let status = match wait::waitpid(None, WALL) {
             Ok(status) =>
                 status,
-            Err(nix::Error::Sys(errno)) if errno == nix::errno::Errno::ECHILD =>
+            Err(errno) if errno == Errno::ECHILD =>
                 // No more children to wait on: we're done.
                 return Ok(None),
             Err(err) =>
@@ -732,8 +735,6 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
 
     match sig {
         SIGSTOP | SIGTSTP | SIGTTIN | SIGTTOU => {
-            use nix::{errno::Errno, Error};
-
             // Possible group-stop. Check `siginfo` to disambiguate.
             //
             // From the manual:
@@ -743,7 +744,7 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
             //     ("no such process") if a SIGKILL killed the tracee.)
             //
             match ptrace::getsiginfo(pid) {
-                Err(Error::Sys(Errno::EINVAL)) =>
+                Err(Errno::EINVAL) =>
                     Ok(true),
                 Err(err) =>
                     Err(err.into()),
@@ -762,16 +763,5 @@ fn is_group_stop(pid: Pid, sig: Signal) -> Result<bool> {
             //
             Ok(false)
         },
-    }
-}
-
-// Only intended for the result of `ptrace::traceme()`.
-fn as_ioerror(err: nix::Error) -> io::Error {
-    if let Some(errno) = err.as_errno() {
-        io::Error::from_raw_os_error(errno as i32)
-    } else {
-        // Should be unreachable when used with `ptrace::traceme()`, since its `Result`
-        // comes from an internal call to `nix::Errno::result()`.
-        io::Error::new(io::ErrorKind::Other, err)
     }
 }

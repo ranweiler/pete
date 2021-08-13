@@ -46,6 +46,7 @@ pub type Siginfo = libc::siginfo_t;
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
 /// Linux constant defined in `include/uapi/linux/elf.h`.
+#[cfg(target_arch = "aarch64")]
 const NT_PRSTATUS: i32 = 0x1;
 
 /// A _ptrace-stop_, a tracee state in which it is stopped and ready to accept ptrace

@@ -15,7 +15,7 @@ use nix::sys::{
 use crate::error::{Error, Result, ResultExt};
 
 #[cfg(target_arch = "aarch64")]
-use crate::aarch64::{self, PTRACE_GETREGSET, PTRACE_SETREGSET};
+use crate::aarch64;
 
 #[cfg(target_arch = "x86_64")]
 use crate::x86;
@@ -46,6 +46,7 @@ pub type Siginfo = libc::siginfo_t;
 const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
 /// Linux constant defined in `include/uapi/linux/elf.h`.
+#[cfg(target_arch = "aarch64")]
 const NT_PRSTATUS: i32 = 0x1;
 
 /// A _ptrace-stop_, a tracee state in which it is stopped and ready to accept ptrace
@@ -144,7 +145,7 @@ impl Tracee {
         };
 
         let res = unsafe {
-            libc::ptrace(PTRACE_GETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
+            libc::ptrace(libc::PTRACE_GETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
         };
 
         nix::errno::Errno::result(res)?;
@@ -165,7 +166,7 @@ impl Tracee {
         };
 
         let res = unsafe {
-            libc::ptrace(PTRACE_SETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
+            libc::ptrace(libc::PTRACE_SETREGSET, self.pid, NT_PRSTATUS, &mut rv as *mut _ as *mut libc::c_void)
         };
 
         nix::errno::Errno::result(res)?;
@@ -236,7 +237,7 @@ impl Tracee {
             iov_len: std::mem::size_of::<aarch64::user_hwdebug_state>(),
         };
         let res = unsafe {
-            libc::ptrace(PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+            libc::ptrace(libc::PTRACE_GETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
         nix::errno::Errno::result(res)?;
@@ -262,7 +263,7 @@ impl Tracee {
             iov_len: std::mem::size_of::<aarch64::user_hwdebug_state>(),
         };
         let res = unsafe {
-            libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+            libc::ptrace(libc::PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
         nix::errno::Errno::result(res)?;

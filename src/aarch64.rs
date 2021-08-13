@@ -1,15 +1,3 @@
-#[cfg(all(target_os = "android"))]
-pub(crate) const PTRACE_GETREGSET: i32 = 0x4204;
-
-#[cfg(all(not(target_os = "android")))]
-pub(crate) const PTRACE_GETREGSET: u32 = 0x4204;
-
-#[cfg(all(target_os = "android"))]
-pub(crate) const PTRACE_SETREGSET: i32 = 0x4205;
-
-#[cfg(all(not(target_os = "android")))]
-pub(crate) const PTRACE_SETREGSET: u32 = 0x4205;
-
 /// Defined in [`include/uapi/linux/elf.h`](https://android.googlesource.com/kernel/common/+/refs/heads/android-mainline/include/uapi/linux/elf.h#421).
 const NT_ARM_HW_BREAK: i32 = 0x402;
 const NT_ARM_HW_WATCH: i32 = 0x403;

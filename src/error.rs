@@ -66,7 +66,7 @@ impl<T> ResultExt<T> for std::result::Result<T, nix::Error> {
         use nix::errno::Errno;
 
         self.map_err(|err| {
-            if let nix::Error::Sys(Errno::ESRCH) = err {
+            if err == Errno::ESRCH {
                 Error::TraceeDied { pid, source: err }
             } else {
                 err.into()

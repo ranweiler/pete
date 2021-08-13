@@ -13,7 +13,7 @@ include = [
 
 [dependencies]
 libc = "0.2.99"
-nix = "0.21.0"
+nix = "0.22.0"
 thiserror = "1.0.11"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]

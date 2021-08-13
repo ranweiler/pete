@@ -263,7 +263,7 @@ impl Tracee {
             iov_len: std::mem::size_of::<aarch64::user_hwdebug_state>(),
         };
         let res = unsafe {
-            libc::ptrace(PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
+            libc::ptrace(libc::PTRACE_SETREGSET, self.pid, regtype, &mut rv as *mut _ as *mut libc::c_void)
         };
 
         nix::errno::Errno::result(res)?;

@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.8.0] - 2021-09-30
+
+### Changed
+
+- Update `nix` lower bound to `0.23.0`
+
 ## [0.7.0] - 2021-08-12
 
 ### Added

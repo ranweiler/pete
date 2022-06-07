@@ -22,5 +22,5 @@ memoffset = "0.6.4"
 [dev-dependencies]
 anyhow = "1.0.31"
 lazy_static = "1.4.0"
-ntest = "0.7.3"
+ntest = "0.8.1"
 structopt = "0.3.21"

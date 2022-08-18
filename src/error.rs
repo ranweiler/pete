@@ -19,10 +19,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Could not attach to tracee = {pid}")]
-    Attach {
-        pid: Pid,
-        source: nix::Error,
-    },
+    Attach { pid: Pid, source: nix::Error },
 
     #[error("Tracee died while in ptrace-stop")]
     TraceeDied { pid: Pid, source: nix::Error },
@@ -33,7 +30,9 @@ pub enum Error {
     #[error("OS error")]
     OS(#[from] nix::Error),
 
-    #[error("Internal error: {0}. Please open an issue at https://github.com/ranweiler/pete/issues")]
+    #[error(
+        "Internal error: {0}. Please open an issue at https://github.com/ranweiler/pete/issues"
+    )]
     Internal(String),
 }
 
@@ -49,8 +48,8 @@ impl Error {
 
 macro_rules! internal_error {
     ($ctx: expr) => {
-        return Err($crate::error::Error::Internal($ctx.into()));
-    }
+        return Err($crate::error::Error::Internal($ctx.into()))
+    };
 }
 
 pub(crate) trait ResultExt<T> {

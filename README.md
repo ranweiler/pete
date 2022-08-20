@@ -7,7 +7,7 @@ A friendly wrapper around the Linux `ptrace(2)` syscall.
 The current minimum supported OS and compiler versions are:
 
 - Linux 4.8
-- rustc 1.46.0
+- rustc 1.56.1
 
 Continuous testing is only run for `x86_64-unknown-linux-gnu`.
 

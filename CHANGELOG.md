@@ -11,11 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- MSRV is now 1.56.1
-- Fix expansion of internal error macro
+### Fixed
+
+## [v0.9.0] - 2022-08-19
+
+### Added
+
+### Changed
+
+- Update MSRV to 1.56.1
 - Update `nix` lower bound to `0.25.0`
 
 ### Fixed
+
+- Expand to block-enclosed `return` in internal error macro
 
 ## [v0.8.0] - 2021-09-30
 

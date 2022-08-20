@@ -1,6 +1,6 @@
 [package]
 name = "pete"
-version = "0.8.0"
+version = "0.9.0"
 rust-version = "1.56.1"
 edition = "2018"
 license = "ISC"

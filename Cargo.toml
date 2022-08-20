@@ -1,10 +1,11 @@
 [package]
 name = "pete"
 version = "0.8.0"
-authors = ["Joe Ranweiler <joe@lemma.co>"]
+rust-version = "1.56.1"
 edition = "2018"
 license = "ISC"
 readme = "README.md"
+authors = ["Joe Ranweiler <joe@lemma.co>"]
 repository = "https://github.com/ranweiler/pete"
 description = "A friendly wrapper around ptrace(2)"
 include = [

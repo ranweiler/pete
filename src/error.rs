@@ -48,9 +48,9 @@ impl Error {
 }
 
 macro_rules! internal_error {
-    ($ctx: expr) => {
+    ($ctx: expr) => {{
         return Err($crate::error::Error::Internal($ctx.into()));
-    }
+    }}
 }
 
 pub(crate) trait ResultExt<T> {

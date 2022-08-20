@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - MSRV is now 1.56.1
 - Fix expansion of internal error macro
+- Update `nix` lower bound to `0.25.0`
 
 ### Fixed
 

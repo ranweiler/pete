@@ -3,6 +3,8 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
+use std::io::Read;
+use std::io::Seek;
 use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
@@ -204,6 +206,16 @@ impl Tracee {
         let len = mem.write_at(data, addr)?;
 
         Ok(len)
+    }
+
+    pub fn read_c_string(&self, addr: u64) -> Result<Vec<u8>> {
+        let mut mem = fs::File::open(self.proc_mem_path())?;
+        mem.seek(io::SeekFrom::Start(addr))?;
+        let c_string = mem
+            .bytes()
+            .take_while(|b| b.as_ref().map_or(false, |b| *b != 0))
+            .collect::<std::io::Result<_>>()?;
+        Ok(c_string)
     }
 
     fn proc_mem_path(&self) -> String {

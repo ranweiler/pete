@@ -11,7 +11,7 @@ do_test() {
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
     FILEINFO=$(file $EXE)
 
-    echo $FILEINFO | grep -iv 'pie executable'
+    (echo $FILEINFO | grep -iv 'pie executable') || echo "error: $1 compiled as PIE"
 
     which readelf
 

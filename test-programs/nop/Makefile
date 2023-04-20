@@ -1,5 +1,5 @@
-CC = clang-11
-CFLAGS = -fno-pie
+CC = clang-14
+CFLAGS = -no-pie
 
 all: nop.exe
 

@@ -8,8 +8,10 @@ HW_BREAK_EX="${BUILD_ROOT}/release/examples/hw_break"
 do_test() {
     EXE=$(readlink -f $1)
 
+    readelf -h $EXE
+
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
-    file $EXE | grep -iv 'pie executable'
+    readelf -h $EXE | grep -iv 'Type:.*DYN.*Position-Independent Executable file'
 
     # Get the entry point of $EXE, as a VA in the format `0x%x`.
     EA=$(readelf -h $EXE | grep Entry | grep -Eo '0x.+$' | tr -d ' ')

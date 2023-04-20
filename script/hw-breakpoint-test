@@ -9,7 +9,9 @@ do_test() {
     EXE=$(readlink -f $1)
 
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
-    file $EXE | grep -iv 'pie executable'
+    FILEINFO=$(file $EXE)
+
+    echo $FILEINFO | grep -iv 'pie executable'
 
     which readelf
 

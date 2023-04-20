@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.10.0] - 2023-04-20
+
+### Added
+
+### Changed
+
+- Update MSRV to 1.63, use `rust-version` in manifest
+- Update `memoffset` to `0.8.0`
+- Update `nix` to `0.26.2`
+- Update `ntest` to `0.9.0`
+- Compile test programs with clang 14
+
+### Fixed
+
+- Override newly default-enabled PIE flags when compiling test programs
+
 ## [v0.9.0] - 2022-08-19
 
 ### Added

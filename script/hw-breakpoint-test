@@ -9,11 +9,10 @@ do_test() {
     EXE=$(readlink -f $1)
 
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
-    FILE_HEADER=$(readelf -h $EXE)
-    echo $FILE_HEADER | grep -iv 'Type:.*DYN.*Position-Independent Executable file'
+    readelf -h $EXE | grep -iv 'Type:.*DYN.*Position-Independent Executable file'
 
     # Get the entry point of $EXE, as a VA in the format `0x%x`.
-    EA=$(echo $FILE_HEADER | grep Entry | grep -Eo '0x.+$' | tr -d ' ')
+    EA=$(readelf -h $EXE | grep Entry | grep -Eo '0x.+$' | tr -d ' ')
 
     OUTPUT=$($HW_BREAK_EX -q -b $EA -- $EXE)
 

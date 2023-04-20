@@ -61,8 +61,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: install OS tools
-        run: sudo apt install -y binutils
       - name: build test-programs
         run: cd test-programs && ./build-all.sh
       - name: upload test-programs

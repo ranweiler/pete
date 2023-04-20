@@ -11,6 +11,8 @@ do_test() {
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
     file $EXE | grep -iv 'pie executable'
 
+    which readelf
+
     # Get the entry point of $EXE, as a VA in the format `0x%x`.
     EA=$(readelf -h $EXE | grep Entry | grep -Eo '0x.+$' | tr -d ' ')
 

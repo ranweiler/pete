@@ -9,10 +9,8 @@ do_test() {
     EXE=$(readlink -f $1)
 
     # Ensure $EXE is non-position independent, so the entry point is an absolute VA.
-    FILE_INFO=$(file $EXE)
-    (echo $FILE_INFO | grep -iv 'pie executable') || echo "error: $1 compiled as PIE"
-
     FILE_HEADER=$(readelf -h $EXE)
+    (echo $FILE_HEADER | grep -iv 'Type:.*DYN.*Position-Independent Executable file') | echo "error: $1 compiled as PIE"
 
     # Get the entry point of $EXE, as a VA in the format `0x%x`.
     EA=$(echo $FILE_HEADER | grep Entry | grep -Eo '0x.+$' | tr -d ' ')

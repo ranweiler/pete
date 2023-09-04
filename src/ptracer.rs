@@ -188,7 +188,7 @@ impl Tracee {
     pub fn read_memory_mut(&self, addr: u64, data: &mut [u8]) -> Result<usize> {
         use std::os::unix::fs::FileExt;
 
-        let mem = fs::File::open(self.proc_mem_path())?;
+        let mem = self.memory()?;
         let len = mem.read_at(data, addr)?;
         Ok(len)
     }
@@ -209,6 +209,10 @@ impl Tracee {
     fn proc_mem_path(&self) -> String {
         let tid = self.pid.as_raw() as u32;
         format!("/proc/{}/mem", tid)
+    }
+
+    pub fn memory(&self) -> Result<fs::File> {
+        Ok(fs::File::open(self.proc_mem_path())?)
     }
 
     pub fn siginfo(&self) -> Result<Option<Siginfo>> {

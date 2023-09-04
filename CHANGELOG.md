@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.11.0] - 2023-09-04
+
+### Added
+
 - Add accessors for the default options applied to newly-spawned tracees
 - Add `Tracee::memory()` to support reading tracee memory as a `File`
 

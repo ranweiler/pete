@@ -351,6 +351,16 @@ impl Ptracer {
         Self { options, tracees }
     }
 
+    /// Returns a reference to the default ptrace options applied to newly-spawned tracees.
+    pub fn default_options(&self) -> &Options {
+        &self.options
+    }
+
+    /// Returns a mutable reference to the default ptrace options applied to newly-spawned tracees.
+    pub fn default_options_mut(&mut self) -> &mut Options {
+        &mut self.options
+    }
+
     /// Resume the stopped tracee, delivering any pending signal.
     pub fn restart(&mut self, tracee: Tracee, restart: Restart) -> Result<()> {
         let Tracee { pid, pending, .. } = tracee;

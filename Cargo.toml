@@ -1,7 +1,7 @@
 [package]
 name = "pete"
 version = "0.10.0"
-rust-version = "1.63"
+rust-version = "1.64"
 edition = "2018"
 license = "ISC"
 readme = "README.md"

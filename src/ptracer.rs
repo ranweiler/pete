@@ -6,6 +6,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command};
+use std::time::Duration;
 
 use nix::{
     errno::Errno,
@@ -45,8 +46,6 @@ pub type Registers = libc::user_regs_struct;
 
 /// Extra signal info, such as its cause.
 pub type Siginfo = libc::siginfo_t;
-
-const WALL: Option<WaitPidFlag> = Some(WaitPidFlag::__WALL);
 
 /// Linux constant defined in `include/uapi/linux/elf.h`.
 #[cfg(target_arch = "aarch64")]
@@ -343,16 +342,22 @@ pub struct Ptracer {
     /// Ptrace options that will be applied to tracees, by default.
     options: Options,
 
+    /// Time to sleep for before polling tracees for new events.
+    poll_delay: Duration,
+
     /// Known tracees, and their state.
     tracees: BTreeMap<i32, State>,
 }
 
+const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(100);
+
 impl Ptracer {
     pub fn new() -> Self {
         let options = Options::all();
+        let poll_delay = DEFAULT_POLL_DELAY;
         let tracees = BTreeMap::new();
 
-        Self { options, tracees }
+        Self { options, poll_delay, tracees }
     }
 
     /// Returns a reference to the default ptrace options applied to newly-spawned tracees.
@@ -363,6 +368,16 @@ impl Ptracer {
     /// Returns a mutable reference to the default ptrace options applied to newly-spawned tracees.
     pub fn default_options_mut(&mut self) -> &mut Options {
         &mut self.options
+    }
+
+    /// Returns a reference to the poll delay.
+    pub fn poll_delay(&self) -> &Duration {
+        &self.poll_delay
+    }
+
+    /// Returns a mutable reference to the poll delay.
+    pub fn poll_delay_mut(&mut self) -> &mut Duration {
+        &mut self.poll_delay
     }
 
     /// Resume the stopped tracee, delivering any pending signal.
@@ -417,21 +432,58 @@ impl Ptracer {
         r
     }
 
+    // Poll tracees for a `wait(2)` status change.
+    fn poll_tracees(&self) -> Result<Option<WaitStatus>> {
+        let flag = WaitPidFlag::__WALL | WaitPidFlag::WNOHANG;
+
+        for tracee in self.tracees.keys().copied() {
+            let pid = Pid::from_raw(tracee);
+
+            match wait::waitpid(pid, Some(flag)) {
+                Ok(WaitStatus::StillAlive) => {
+                    // Alive, no state change. Check remaining tracees.
+                    continue;
+                },
+                Ok(status) => {
+                    // One of our tracees changed state.
+                    return Ok(Some(status));
+                },
+                Err(errno) if errno == Errno::ECHILD => {
+                    // No more children to wait on: we're done.
+                    return Ok(None)
+                },
+                Err(err) => {
+                    // Something else went wrong.
+                    return Err(err.into())
+                },
+            };
+        }
+
+        // No tracee changed state.
+        Ok(None)
+    }
+
     /// Wait for some running tracee process to stop.
     ///
     /// If there are no tracees to wait on, returns `None`.
     pub fn wait(&mut self) -> Result<Option<Tracee>> {
         use Signal::*;
 
-        let status = match wait::waitpid(None, WALL) {
-            Ok(status) =>
-                status,
-            Err(errno) if errno == Errno::ECHILD =>
-                // No more children to wait on: we're done.
-                return Ok(None),
-            Err(err) =>
-                return Err(err.into()),
-        };
+        let status;
+
+        loop {
+            if self.tracees.is_empty() {
+                return Ok(None);
+            }
+
+            if let Some(new_status) = self.poll_tracees()? {
+                // A tracee changed state, examine its `wait(2)` status.
+                status = new_status;
+                break;
+            } else {
+                std::thread::sleep(self.poll_delay);
+            }
+        }
 
         let tracee = match status {
             WaitStatus::Exited(pid, _exit_code) => {

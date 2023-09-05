@@ -10,14 +10,18 @@ macro_rules! assert_matches {
         if let $pat = $expr {
             // Pass.
         } else {
-            panic!("expected `{}` to match `{}`", stringify!($expr), stringify!($pat));
+            panic!(
+                "expected `{}` to match `{}`",
+                stringify!($expr),
+                stringify!($pat)
+            );
         }
-    }
+    };
 }
 
 #[cfg(target_arch = "x86_64")]
 #[test]
-#[timeout(1000)]
+#[timeout(100)]
 fn test_tracee_died() -> Result<()> {
     let cmd = Command::new("true");
 

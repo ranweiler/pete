@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add accessors for `wait()` poll delay
+
 ### Changed
 
 ### Fixed
+
+- Only poll known tracees for `wait(2)` status changes
 
 ## [v0.11.0] - 2023-09-04
 

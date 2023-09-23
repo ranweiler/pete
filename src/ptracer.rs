@@ -494,6 +494,9 @@ impl Ptracer {
                 self.remove_tracee(pid);
                 return self.wait();
             },
+            WaitStatus::Stopped(pid, SIGINT) => {
+                Tracee::new(pid, None, Stop::SignalDelivery { signal: SIGINT })
+            },
             WaitStatus::Stopped(pid, SIGTRAP) => {
                 let state = self.tracee_state_mut(pid);
 

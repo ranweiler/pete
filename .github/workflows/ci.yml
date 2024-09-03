@@ -20,7 +20,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
       - name: download deps
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.8
         with:
           name: nop.exe
       - name: set up deps
@@ -64,7 +64,7 @@ jobs:
       - name: build test-programs
         run: cd test-programs && ./build-all.sh
       - name: upload test-programs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: nop.exe
           path: ./test-programs/nop/nop.exe

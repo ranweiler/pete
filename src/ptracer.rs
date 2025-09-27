@@ -469,26 +469,24 @@ impl Ptracer {
     pub fn wait(&mut self) -> Result<Option<Tracee>> {
         use Signal::*;
 
-        let status;
         let mut poll_delay = self.poll_delay;
 
         // Wait on known tracees with exponential backoff.
-        loop {
+        let status = loop {
             if self.tracees.is_empty() {
                 return Ok(None);
             }
 
-            if let Some(new_status) = self.poll_tracees()? {
-                // A tracee changed state, examine its `wait(2)` status.
-                status = new_status;
-                break;
+            if let Some(status) = self.poll_tracees()? {
+                // A tracee changed state; examine its `wait(2)` status.
+                break status;
             } else {
                 std::thread::sleep(poll_delay);
 
                 // Back off before next attempt.
                 poll_delay = (2 * poll_delay) + Duration::from_micros(1);
             }
-        }
+        };
 
         let tracee = match status {
             WaitStatus::Exited(pid, _exit_code) => {

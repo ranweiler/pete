@@ -349,7 +349,7 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
-const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(0);
+const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
 
 impl Ptracer {
     pub fn new() -> Self {
@@ -484,7 +484,7 @@ impl Ptracer {
                 std::thread::sleep(poll_delay);
 
                 // Back off before next attempt.
-                poll_delay = (2 * poll_delay) + Duration::from_micros(1);
+                poll_delay *= 2;
             }
         };
 

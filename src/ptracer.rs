@@ -365,9 +365,9 @@ impl Ptracer {
         &self.options
     }
 
-    /// Returns a mutable reference to the default ptrace options applied to newly-spawned tracees.
-    pub fn default_options_mut(&mut self) -> &mut Options {
-        &mut self.options
+    /// Set the default ptrace options applied to newly-spawned tracees.
+    pub fn set_default_options(&mut self, options: Options) {
+        self.options = options;
     }
 
     /// Returns a reference to the poll delay.
@@ -375,9 +375,9 @@ impl Ptracer {
         &self.poll_delay
     }
 
-    /// Returns a mutable reference to the poll delay.
-    pub fn poll_delay_mut(&mut self) -> &mut Duration {
-        &mut self.poll_delay
+    /// Set the poll delay.
+    pub fn set_poll_delay(&mut self, poll_delay: Duration) {
+        self.poll_delay = poll_delay;
     }
 
     /// Resume the stopped tracee, delivering any pending signal.

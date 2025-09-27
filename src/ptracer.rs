@@ -470,7 +470,9 @@ impl Ptracer {
         use Signal::*;
 
         let status;
+        let mut poll_delay = self.poll_delay;
 
+        // Wait on known tracees with exponential backoff.
         loop {
             if self.tracees.is_empty() {
                 return Ok(None);
@@ -481,7 +483,10 @@ impl Ptracer {
                 status = new_status;
                 break;
             } else {
-                std::thread::sleep(self.poll_delay);
+                std::thread::sleep(poll_delay);
+
+                // Back off before next attempt.
+                poll_delay = (2 * poll_delay) + Duration::from_micros(1);
             }
         }
 

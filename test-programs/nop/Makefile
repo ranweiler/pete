@@ -1,4 +1,4 @@
-CC = clang-14
+CC = clang
 CFLAGS = -no-pie
 
 all: nop.exe

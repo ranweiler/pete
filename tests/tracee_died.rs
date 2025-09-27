@@ -17,7 +17,7 @@ macro_rules! assert_matches {
 
 #[cfg(target_arch = "x86_64")]
 #[test]
-#[timeout(1000)]
+#[timeout(100)]
 fn test_tracee_died() -> Result<()> {
     let cmd = Command::new("true");
 

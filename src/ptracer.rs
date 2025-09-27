@@ -349,7 +349,7 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
-const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(100);
+const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(0);
 
 impl Ptracer {
     pub fn new() -> Self {
@@ -469,21 +469,24 @@ impl Ptracer {
     pub fn wait(&mut self) -> Result<Option<Tracee>> {
         use Signal::*;
 
-        let status;
+        let mut poll_delay = self.poll_delay;
 
-        loop {
+        // Wait on known tracees with exponential backoff.
+        let status = loop {
             if self.tracees.is_empty() {
                 return Ok(None);
             }
 
-            if let Some(new_status) = self.poll_tracees()? {
-                // A tracee changed state, examine its `wait(2)` status.
-                status = new_status;
-                break;
+            if let Some(status) = self.poll_tracees()? {
+                // A tracee changed state; examine its `wait(2)` status.
+                break status;
             } else {
-                std::thread::sleep(self.poll_delay);
+                std::thread::sleep(poll_delay);
+
+                // Back off before next attempt.
+                poll_delay = (2 * poll_delay) + Duration::from_micros(1);
             }
-        }
+        };
 
         let tracee = match status {
             WaitStatus::Exited(pid, _exit_code) => {

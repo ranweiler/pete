@@ -360,9 +360,9 @@ impl Ptracer {
         Self { options, poll_delay, tracees }
     }
 
-    /// Returns a reference to the default ptrace options applied to newly-spawned tracees.
-    pub fn default_options(&self) -> &Options {
-        &self.options
+    /// Return the default ptrace options applied to newly-spawned tracees.
+    pub fn default_options(&self) -> Options {
+        self.options
     }
 
     /// Set the default ptrace options applied to newly-spawned tracees.
@@ -370,12 +370,12 @@ impl Ptracer {
         self.options = options;
     }
 
-    /// Returns a reference to the poll delay.
-    pub fn poll_delay(&self) -> &Duration {
-        &self.poll_delay
+    /// Return the initial tracee poll delay.
+    pub fn poll_delay(&self) -> Duration {
+        self.poll_delay
     }
 
-    /// Set the poll delay.
+    /// Set the initial tracee poll delay.
     pub fn set_poll_delay(&mut self, poll_delay: Duration) {
         self.poll_delay = poll_delay;
     }

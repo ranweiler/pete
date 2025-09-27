@@ -349,7 +349,7 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
-const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(100);
+const DEFAULT_POLL_DELAY: Duration = Duration::from_millis(0);
 
 impl Ptracer {
     pub fn new() -> Self {

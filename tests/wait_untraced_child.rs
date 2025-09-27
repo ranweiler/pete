@@ -5,7 +5,7 @@ use ntest::timeout;
 use pete::{Ptracer, Restart};
 
 #[test]
-#[timeout(5000)]
+#[timeout(3000)]
 fn test_wait_untraced_child() -> Result<()> {
     // Untraced, exits before tracee.
     let mut fast = Command::new("sleep").arg("0.1").spawn()?;

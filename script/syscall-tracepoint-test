@@ -33,7 +33,7 @@ do_test() {
         exit 1
     fi
 
-    diff -q perf.tsv pete.tsv
+    diff perf.tsv pete.tsv
 }
 
 TMP_DIR=$(mktemp -d)

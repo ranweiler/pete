@@ -9,6 +9,8 @@ The current minimum supported OS and compiler versions are:
 - Linux 4.8
 - rustc 1.64
 
+Due to test library requirements, the oldest _tested_ Rust version is 1.76.
+
 Continuous testing is only run for `x86_64-unknown-linux-gnu`.
 
 Support for earlier Linux versions is possible, but low priority. Eventually, we would

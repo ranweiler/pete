@@ -414,7 +414,7 @@ impl Ptracer {
 
     /// Spawn `cmd` for tracing.
     ///
-    /// The command will be configured to requrest `PTRACE_TRACEME` after `fork()` and
+    /// The command will be configured to request `PTRACE_TRACEME` after `fork()` and
     /// pre-`exec()`. The caller will use this to avoid races and missed events.
     pub fn spawn(&mut self, mut cmd: Command) -> Result<Child> {
         // On fork, request `PTRACE_TRACEME`.

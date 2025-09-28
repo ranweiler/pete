@@ -11,7 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Improve accessor ergonomics
+- Update `nix` to `0.30.1`
+
 ### Fixed
+- Detach from exiting tracees
+- Poll tracees with exponential backoff
 
 ## [v0.12.0] - 2023-09-04
 

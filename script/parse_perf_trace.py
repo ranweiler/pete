@@ -12,7 +12,7 @@ def main():
             print(f"{pid}\t{stop_type}\t{syscallno}")
 
 
-PATTERN = re.compile("(\d+) .* raw_syscalls:sys_(enter|exit): NR (\d+)")
+PATTERN = re.compile(r"(\d+) .* raw_syscalls:sys_(enter|exit): NR (\d+)")
 
 
 def parse_line(line):

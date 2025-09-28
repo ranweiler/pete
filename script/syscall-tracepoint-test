@@ -33,6 +33,13 @@ do_test() {
         exit 1
     fi
 
+    echo 'perf.tsv'
+    cat perf.tsv
+    echo
+    echo 'pete.tsv'
+    cat pete.tsv
+    echo
+
     diff perf.tsv pete.tsv
 }
 

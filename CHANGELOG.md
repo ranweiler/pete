@@ -9,12 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.13.0] - 2025-09-28
+
+### Added
+
 - Add debug tracing
 
 ### Changed
 
-- Improve accessor ergonomics
+- Improve accessor ergonomics (breaking)
+- Update `memoffset` to `0.9.1`
 - Update `nix` to `0.30.1`
+- Update `thiserror` to `2.0.3`
 
 ### Fixed
 

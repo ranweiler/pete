@@ -329,6 +329,9 @@ enum State {
 
     // After a syscall-exit-stop or seccomp-stop.
     Syscalling,
+
+    // Stopped mid-exit (but not yet reaped) and pending detach.
+    Exiting,
 }
 
 /// Tracer for a Linux process.
@@ -383,6 +386,17 @@ impl Ptracer {
     /// Resume the stopped tracee, delivering any pending signal.
     pub fn restart(&mut self, tracee: Tracee, restart: Restart) -> Result<()> {
         let Tracee { pid, pending, .. } = tracee;
+
+        if let Some(State::Exiting) = self.tracee_state(tracee.pid) {
+            // Override restart request with a detach.
+            let r = ptrace::detach(tracee.pid, tracee.pending);
+            r.died_if_esrch(tracee.pid)?;
+
+            // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
+            self.remove_tracee(tracee.pid);
+
+            return Ok(());
+        }
 
         let r = match restart {
             Restart::Step =>
@@ -489,13 +503,11 @@ impl Ptracer {
         };
 
         let tracee = match status {
-            WaitStatus::Exited(pid, _exit_code) => {
-                self.remove_tracee(pid);
-                return self.wait();
+            WaitStatus::Exited(_pid, _exit_code) => {
+                internal_error!("consumed wait status for exited tracee");
             },
-            WaitStatus::Signaled(pid, _sig, _is_core_dump) => {
-                self.remove_tracee(pid);
-                return self.wait();
+            WaitStatus::Signaled(_pid, _sig, _is_core_dump) => {
+                internal_error!("consumed wait status for signaled tracee");
             },
             WaitStatus::Stopped(pid, SIGTRAP) => {
                 let state = self.tracee_state_mut(pid);
@@ -614,7 +626,8 @@ impl Ptracer {
                         // as an `unsigned long`. We are only interested in the low 16-bit word.
                         let status = ptrace::getevent(pid).died_if_esrch(pid)? as u16;
 
-                        self.remove_tracee(pid);
+                        // Mark the tracee as exiting so we can detach on next restart.
+                        self.set_tracee_state(pid, State::Exiting);
 
                         let stop = match ExitType::parse(status)? {
                             ExitType::Exit(exit_code) =>
@@ -719,6 +732,11 @@ impl Ptracer {
                                 // ptrace-event-stop, and so we can never reach this case.
                                 internal_error!("syscall-stop for `Spawning` tracee")
                             },
+                            State::Exiting => {
+                                // If the tracee was in the `Exiting` state, we should have detached on
+                                // the next restart request.
+                                internal_error!("unexpected event for detached tracee")
+                            },
                         }
                     },
                     None => {
@@ -740,6 +758,10 @@ impl Ptracer {
 
     fn remove_tracee(&mut self, pid: Pid) -> Option<State> {
         self.tracees.remove(&pid.as_raw())
+    }
+
+    fn tracee_state(&self, pid: Pid) -> Option<State> {
+        self.tracees.get(&pid.as_raw()).copied()
     }
 
     fn set_tracee_state(&mut self, pid: Pid, state: State) {

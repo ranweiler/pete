@@ -27,13 +27,13 @@ fn test_wait_untraced_child() -> Result<()> {
     }
 
     eprintln!("waiting on tracee: {}", tracee.id());
-    println!("tracee status: {}", tracee.wait()?);
+    eprintln!("tracee status: {}", tracee.wait()?);
 
     eprintln!("waiting on fast: {}", fast.id());
-    println!("fast status: {}", fast.wait()?);
+    eprintln!("fast status: {}", fast.wait()?);
 
     eprintln!("waiting on slow: {}", slow.id());
-    println!("slow status: {}", slow.wait()?);
+    eprintln!("slow status: {}", slow.wait()?);
 
     eprintln!("ok!");
 

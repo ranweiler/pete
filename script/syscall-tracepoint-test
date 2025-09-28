@@ -9,9 +9,8 @@ do_test() {
     # Spawn and trace a `pete` example tracer that emits syscalls as TSV. Pipe the
     # tracee's output to `pete.tsv` while also recording raw syscall enter and exit
     # tracepoints.
-    unset RUST_LOG
     export RUST_LOG=off
-    sudo perf record \
+    sudo -E perf record \
          --inherit \
          -o perf.data \
          -e 'raw_syscalls:sys_enter' \

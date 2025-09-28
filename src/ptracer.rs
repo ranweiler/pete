@@ -15,6 +15,7 @@ use nix::{
         wait::{self, WaitPidFlag, WaitStatus},
     },
 };
+use tracing::{debug, info, trace};
 
 use crate::error::{Error, Result, ResultExt};
 
@@ -488,6 +489,8 @@ impl Ptracer {
         // Wait on known tracees with exponential backoff.
         let status = loop {
             if self.tracees.is_empty() {
+                debug!("no tracees to wait on");
+
                 return Ok(None);
             }
 
@@ -495,6 +498,8 @@ impl Ptracer {
                 // A tracee changed state; examine its `wait(2)` status.
                 break status;
             } else {
+                trace!(tracees = self.tracees.len(), ?poll_delay, "no tracee updates, backing off");
+
                 std::thread::sleep(poll_delay);
 
                 // Back off before next attempt.
@@ -757,6 +762,7 @@ impl Ptracer {
     }
 
     fn remove_tracee(&mut self, pid: Pid) -> Option<State> {
+        info!(pid = pid.as_raw(), "removing tracee");
         self.tracees.remove(&pid.as_raw())
     }
 
@@ -765,6 +771,8 @@ impl Ptracer {
     }
 
     fn set_tracee_state(&mut self, pid: Pid, state: State) {
+        debug!(pid = pid.as_raw(), ?state, "setting tracee state");
+
         self.tracees.insert(pid.as_raw(), state);
     }
 
@@ -774,6 +782,12 @@ impl Ptracer {
 
     // Mark `pid` as a new tracee pending attach-stop, if it isn't already known.
     fn mark_tracee(&mut self, pid: Pid) {
+        debug!(pid = pid.as_raw(), "marking tracee as attaching if unknown");
+
+        if !self.tracees.contains_key(&pid.as_raw()) {
+            info!(pid = pid.as_raw(), "attaching to new tracee");
+        }
+
         self.tracees.entry(pid.as_raw()).or_insert(State::Attaching);
     }
 }

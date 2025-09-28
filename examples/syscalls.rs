@@ -19,6 +19,8 @@ struct Opt {
 }
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let opt = Opt::from_args();
     let argv: Vec<String> = opt.argv;
 

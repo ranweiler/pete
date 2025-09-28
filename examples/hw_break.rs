@@ -22,6 +22,8 @@ fn parse_breakpoint(s: &str) -> Result<u64> {
 }
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let opt = Opt::from_args();
 
     let mut cmd = Command::new(&opt.argv[0]);

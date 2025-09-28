@@ -5,6 +5,8 @@ use pete::{Ptracer, Restart, Tracee};
 
 
 fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let argv: Vec<String> = env::args().skip(1).collect();
     let mut cmd = Command::new(&argv[0]);
     cmd.args(&argv[1..]);

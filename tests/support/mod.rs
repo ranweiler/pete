@@ -11,6 +11,7 @@ macro_rules! pid {
     };
 }
 
+/// Construct a tracee stop event with a readable, integration test-friendly syntax.
 macro_rules! event {
     ($raw_pid: expr, $stop: expr) => {{
         use pete::Stop::*;

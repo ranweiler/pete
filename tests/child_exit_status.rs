@@ -10,7 +10,7 @@ use support::*;
 
 #[test]
 #[timeout(2000)]
-fn test_trace_true() -> Result<()> {
+fn test_trace_child_exit_status() -> Result<()> {
     let cmd = Command::new("true");
     let mut tracer = Ptracer::new();
     let mut tracee = tracer.spawn(cmd)?;

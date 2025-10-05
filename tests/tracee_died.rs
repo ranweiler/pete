@@ -2,18 +2,11 @@ use std::process::Command;
 
 use anyhow::Result;
 use ntest::timeout;
-use pete::{Error, Ptracer, Restart};
+use pete::{Error, Ptracer, Restart, Signal};
 
-// Support absence of `matches!()` in rustc 1.41.0.
-macro_rules! assert_matches {
-    ($expr: expr, $pat: pat) => {
-        if let $pat = $expr {
-            // Pass.
-        } else {
-            panic!("expected `{}` to match `{}`", stringify!($expr), stringify!($pat));
-        }
-    }
-}
+#[macro_use]
+mod support;
+use support::*;
 
 #[cfg(target_arch = "x86_64")]
 #[test]
@@ -26,12 +19,16 @@ fn test_tracee_died() -> Result<()> {
 
     let mut died = false;
 
+    let mut events = vec![];
+
     while let Some(tracee) = tracer.wait()? {
+        events.push(tracee);
+
         // Kill the stopped tracee, so restart and subsequent ptrace calls fail.
         child.kill()?;
 
         if let Err(err) = tracer.restart(tracee, Restart::Continue) {
-            assert_matches!(err, Error::TraceeDied { .. });
+            assert!(matches!(err, Error::TraceeDied { .. }));
             assert!(err.tracee_died());
 
             let regs = tracee.registers();
@@ -39,7 +36,7 @@ fn test_tracee_died() -> Result<()> {
             assert!(regs.is_err());
 
             if let Err(err) = regs {
-                assert_matches!(err, Error::TraceeDied { .. });
+                assert!(matches!(err, Error::TraceeDied { .. }));
                 assert!(err.tracee_died());
             } else {
                 unreachable!();
@@ -50,6 +47,11 @@ fn test_tracee_died() -> Result<()> {
     }
 
     assert!(died);
+
+    assert_equivalent(&events, &[
+        event!(0, SyscallExit),
+        event!(0, Signaling { signal: Signal::SIGKILL, core_dumped: false }, SIGTRAP),
+    ]);
 
     Ok(())
 }

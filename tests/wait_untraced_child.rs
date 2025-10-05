@@ -4,6 +4,10 @@ use anyhow::Result;
 use ntest::timeout;
 use pete::{Ptracer, Restart};
 
+#[macro_use]
+mod support;
+use support::*;
+
 #[test]
 #[timeout(3000)]
 fn test_wait_untraced_child() -> Result<()> {
@@ -20,11 +24,20 @@ fn test_wait_untraced_child() -> Result<()> {
     let mut tracer = Ptracer::new();
     let mut tracee = tracer.spawn(traceme)?;
 
+    let mut events = vec![];
+
     while let Some(tracee) = tracer.wait()? {
+        events.push(tracee);
+
         eprintln!("{}: {:?}", tracee.pid, tracee.stop);
 
         tracer.restart(tracee, Restart::Continue)?;
     }
+
+    assert_equivalent(&events, &[
+        event!(0, SyscallExit),
+        event!(0, Exiting { exit_code: 0}, SIGTRAP),
+    ]);
 
     eprintln!("waiting on tracee: {}", tracee.id());
     eprintln!("tracee status: {}", tracee.wait()?);

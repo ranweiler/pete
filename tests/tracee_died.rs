@@ -8,17 +8,6 @@ use pete::{Error, Ptracer, Restart, Signal};
 mod support;
 use support::*;
 
-// Support absence of `matches!()` in rustc 1.41.0.
-macro_rules! assert_matches {
-    ($expr: expr, $pat: pat) => {
-        if let $pat = $expr {
-            // Pass.
-        } else {
-            panic!("expected `{}` to match `{}`", stringify!($expr), stringify!($pat));
-        }
-    }
-}
-
 #[cfg(target_arch = "x86_64")]
 #[test]
 #[timeout(100)]
@@ -39,7 +28,7 @@ fn test_tracee_died() -> Result<()> {
         child.kill()?;
 
         if let Err(err) = tracer.restart(tracee, Restart::Continue) {
-            assert_matches!(err, Error::TraceeDied { .. });
+            assert!(matches!(err, Error::TraceeDied { .. }));
             assert!(err.tracee_died());
 
             let regs = tracee.registers();
@@ -47,7 +36,7 @@ fn test_tracee_died() -> Result<()> {
             assert!(regs.is_err());
 
             if let Err(err) = regs {
-                assert_matches!(err, Error::TraceeDied { .. });
+                assert!(matches!(err, Error::TraceeDied { .. }));
                 assert!(err.tracee_died());
             } else {
                 unreachable!();

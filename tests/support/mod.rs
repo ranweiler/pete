@@ -1,4 +1,5 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::collections::HashMap;
+use std::convert::TryInto;
 
 use pete::{Pid, Stop, Tracee};
 use pretty_assertions::assert_eq;

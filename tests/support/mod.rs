@@ -29,6 +29,7 @@ macro_rules! event {
     }};
 }
 
+/// Assert that two event traces are equivalent modulo PID normalization.
 pub fn assert_equivalent(left: &[Tracee], right: &[Tracee]) {
     let normed_left = Normalizer::normalize(left);
     let normed_right = Normalizer::normalize(right);

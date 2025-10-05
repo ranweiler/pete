@@ -2,7 +2,11 @@ use std::process::Command;
 
 use anyhow::Result;
 use ntest::timeout;
-use pete::{Error, Ptracer, Restart};
+use pete::{Error, Ptracer, Restart, Signal};
+
+#[macro_use]
+mod support;
+use support::*;
 
 // Support absence of `matches!()` in rustc 1.41.0.
 macro_rules! assert_matches {
@@ -26,7 +30,11 @@ fn test_tracee_died() -> Result<()> {
 
     let mut died = false;
 
+    let mut events = vec![];
+
     while let Some(tracee) = tracer.wait()? {
+        events.push(tracee);
+
         // Kill the stopped tracee, so restart and subsequent ptrace calls fail.
         child.kill()?;
 
@@ -50,6 +58,11 @@ fn test_tracee_died() -> Result<()> {
     }
 
     assert!(died);
+
+    assert_equivalent(&events, &[
+        event!(0, SyscallExit),
+        event!(0, Signaling { signal: Signal::SIGKILL, core_dumped: false }, SIGTRAP),
+    ]);
 
     Ok(())
 }

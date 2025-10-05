@@ -4,6 +4,10 @@ use anyhow::Result;
 use ntest::timeout;
 use pete::{Ptracer, Restart};
 
+#[macro_use]
+mod support;
+use support::*;
+
 #[test]
 #[timeout(2000)]
 fn test_trace_true() -> Result<()> {
@@ -11,8 +15,11 @@ fn test_trace_true() -> Result<()> {
     let mut tracer = Ptracer::new();
     let mut tracee = tracer.spawn(cmd)?;
 
+    let mut events = vec![];
+
     while let Some(tracee) = tracer.wait()? {
         eprintln!("{}: {:?}", tracee.pid, tracee.stop);
+        events.push(tracee);
 
         tracer.restart(tracee, Restart::Continue)?;
     }
@@ -24,6 +31,11 @@ fn test_trace_true() -> Result<()> {
 
     assert!(status.success());
     assert_eq!(status.code(), Some(0));
+
+    assert_equivalent(&events, &[
+        event!(0, SyscallExit),
+        event!(0, Exiting { exit_code: 0 }, SIGTRAP),
+    ]);
 
     eprintln!("ok!");
 

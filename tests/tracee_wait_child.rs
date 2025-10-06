@@ -21,7 +21,8 @@ fn test_waiting_child() -> Result<()> {
     let mut events = vec![];
 
     while let Some(tracee) = tracer.wait()? {
-        eprintln!("{}: {:?}", tracee.pid, tracee.stop);
+        eprintln!("{}: {:?}", tracee.pid(), tracee.stop());
+
         events.push(tracee);
 
         tracer.restart(tracee, Restart::Continue)?;

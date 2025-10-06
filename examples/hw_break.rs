@@ -48,7 +48,8 @@ fn main() -> Result<()> {
             set = true;
         }
 
-        let Tracee { pid, stop, .. } = tracee;
+        let pid = tracee.pid();
+        let stop = tracee.stop();
 
         if !opt.quiet {
             println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);

@@ -55,7 +55,7 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
     let regs = tracee.registers()?;
     let pc = regs.rip as u64;
 
-    match tracee.stop {
+    match tracee.stop() {
         Stop::SyscallEnter | Stop::SyscallExit => {
             let syscallno = regs.orig_rax;
             let syscall = SYSCALL_TABLE
@@ -63,11 +63,13 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
                 .cloned()
                 .unwrap_or_else(|| format!("unknown (syscallno = 0x{:x})", syscallno));
 
-            let Tracee { pid, stop, .. } = tracee;
+            let pid = tracee.pid();
+            let stop = tracee.stop();
             println!("pid = {}, pc = {:x}: [{}], {:?}", pid, pc, syscall, stop);
         },
         _ => {
-            let Tracee { pid, stop, .. } = tracee;
+            let pid = tracee.pid();
+            let stop = tracee.stop();
             println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
         },
     }
@@ -76,7 +78,7 @@ fn on_stop(tracee: &mut Tracee) -> Result<()> {
 }
 
 fn on_stop_tsv(tracee: &mut Tracee) -> Result<()> {
-    match tracee.stop {
+    match tracee.stop() {
         Stop::SyscallEnter => {
             on_syscall_stop_tsv(tracee, true)?;
         }
@@ -94,7 +96,7 @@ fn on_syscall_stop_tsv(tracee: &mut Tracee, syscall_enter: bool) -> Result<()> {
     let syscallno = regs.orig_rax;
     let stop_type = if syscall_enter { "enter" } else { "exit" };
 
-    println!("{}\t{}\t{}", tracee.pid, stop_type, syscallno);
+    println!("{}\t{}\t{}", tracee.pid(), stop_type, syscallno);
 
     Ok(())
 }

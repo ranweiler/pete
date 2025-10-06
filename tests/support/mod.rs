@@ -61,9 +61,9 @@ impl Normalizer {
     }
 
     fn normalize_tracee(&mut self, tracee: &Tracee) -> Tracee {
-        let normed_pid = self.normalize_pid(tracee.pid);
-        let normed_stop = self.normalize_stop(tracee.stop);
-        Tracee::new(normed_pid, tracee.pending, normed_stop)
+        let normed_pid = self.normalize_pid(tracee.pid());
+        let normed_stop = self.normalize_stop(tracee.stop());
+        Tracee::new(normed_pid, tracee.pending_signal(), normed_stop)
     }
 
     fn normalize_stop(&mut self, stop: Stop) -> Stop {

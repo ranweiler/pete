@@ -1,8 +1,7 @@
 use std::env;
 use std::process::Command;
 
-use pete::{Ptracer, Restart, Tracee};
-
+use pete::{Ptracer, Restart};
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
@@ -18,7 +17,8 @@ fn main() -> anyhow::Result<()> {
         let regs = tracee.registers()?;
         let pc = regs.rip as u64;
 
-        let Tracee { pid, stop, .. } = tracee;
+        let pid = tracee.pid();
+        let stop = tracee.stop();
         println!("pid = {}, pc = {:x}: {:?}", pid, pc, stop);
 
         ptracer.restart(tracee, Restart::Continue)?;

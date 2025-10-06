@@ -29,7 +29,7 @@ fn test_wait_untraced_child() -> Result<()> {
     while let Some(tracee) = tracer.wait()? {
         events.push(tracee);
 
-        eprintln!("{}: {:?}", tracee.pid, tracee.stop);
+        eprintln!("{}: {:?}", tracee.pid(), tracee.stop());
 
         tracer.restart(tracee, Restart::Continue)?;
     }

@@ -102,9 +102,9 @@ pub enum Restart {
 /// operations on it may fail between calls to [`Ptracer::wait()`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Tracee {
-    pub pid: Pid,
-    pub pending: Option<Signal>,
-    pub stop: Stop,
+    pid: Pid,
+    pending: Option<Signal>,
+    stop: Stop,
 
     #[doc(hidden)]
     _not_send: PhantomData<*const ()>,
@@ -116,6 +116,22 @@ impl Tracee {
         let _not_send = PhantomData;
 
         Self { pid, pending, stop, _not_send }
+    }
+
+    pub fn pid(&self) -> Pid {
+        self.pid
+    }
+
+    pub fn pending_signal(&self) -> Option<Signal> {
+        self.pending
+    }
+
+    pub fn set_pending_signal(&mut self, pending: impl Into<Option<Signal>>) {
+        self.pending = pending.into();
+    }
+
+    pub fn stop(&self) -> Stop {
+        self.stop
     }
 
     /// Set a signal to deliver to the stopped process upon restart.

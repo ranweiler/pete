@@ -335,8 +335,8 @@ impl Tracee {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum State {
-    // Traced, no special expectation for next stop.
-    Traced,
+    // Attached, no expectations for next stop.
+    Running,
 
     // Newly-attached, expecting a SIGSTOP.
     Attaching,
@@ -549,7 +549,7 @@ impl Ptracer {
                     let mut tracee = Tracee::new(pid, None, stop);
 
                     // Update the tracee state so subsequent traps are interpreted correctly.
-                    *state = State::Traced;
+                    *state = State::Running;
 
                     // Set global tracing options on this root tracee. Auto-attached tracees from
                     // fork, clone, and exec will inherit them.
@@ -565,7 +565,7 @@ impl Ptracer {
                 if signal == SIGSTOP {
                     if let Some(state) = self.tracee_state_mut(pid) {
                         if *state == State::Attaching {
-                            *state = State::Traced;
+                            *state = State::Running;
                             let stop = Stop::Attach;
                             let tracee = Tracee::new(pid, None, stop);
                             return Ok(Some(tracee));
@@ -576,7 +576,7 @@ impl Ptracer {
                         // which would otherwise have us mark it as `Attaching`. Since `Attaching`
                         // only exists to let us know that the next stop (i.e. this stop) is an
                         // attach-stop, we can directly initialize this tracee as `Traced`.
-                        self.set_tracee_state(pid, State::Traced);
+                        self.set_tracee_state(pid, State::Running);
                         let stop = Stop::Attach;
                         let tracee = Tracee::new(pid, None, stop);
                         return Ok(Some(tracee));
@@ -730,10 +730,10 @@ impl Ptracer {
                     Some(state) => {
                         match state {
                             State::Syscalling => {
-                                *state = State::Traced;
+                                *state = State::Running;
                                 Stop::SyscallExit
                             },
-                            State::Traced => {
+                            State::Running => {
                                 *state = State::Syscalling;
                                 Stop::SyscallEnter
                             },

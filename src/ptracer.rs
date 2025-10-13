@@ -786,6 +786,10 @@ impl Ptracer {
         self.tracees.get(&pid.as_raw()).copied()
     }
 
+    fn try_tracee_state(&self, pid: Pid) -> Result<State> {
+        self.tracee_state(pid).ok_or_else(|| Error::Internal("no tracee state".into()))
+    }
+
     fn set_tracee_state(&mut self, pid: Pid, state: State) {
         debug!(pid = pid.as_raw(), ?state, "setting tracee state");
 

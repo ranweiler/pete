@@ -575,7 +575,7 @@ impl Ptracer {
                         // We may see an attach-stop out-of-order, before the ptrace-event-stop
                         // which would otherwise have us mark it as `Attaching`. Since `Attaching`
                         // only exists to let us know that the next stop (i.e. this stop) is an
-                        // attach-stop, we can directly initialize this tracee as `Traced`.
+                        // attach-stop, we can directly initialize this tracee as `Running`.
                         self.set_tracee_state(pid, State::Running);
                         let stop = Stop::Attach;
                         let tracee = Tracee::new(pid, None, stop);

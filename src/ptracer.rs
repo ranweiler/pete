@@ -530,7 +530,7 @@ impl Ptracer {
             WaitStatus::Signaled(_pid, _sig, _is_core_dump) => {
                 internal_error!("consumed wait status for signaled tracee");
             },
-            WaitStatus::Stopped(pid, SIGTRAP) => {
+            WaitStatus::Stopped(pid, signal @ SIGTRAP) => {
                 let state = self.tracee_state_mut(pid);
 
                 if let Some(state @ State::Spawned) = state {
@@ -557,7 +557,7 @@ impl Ptracer {
 
                     tracee
                 } else {
-                    let stop = Stop::SignalDelivery { signal: SIGTRAP };
+                    let stop = Stop::SignalDelivery { signal };
                     Tracee::new(pid, None, stop)
                 }
             },

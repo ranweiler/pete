@@ -570,8 +570,7 @@ impl Ptracer {
                             let tracee = Tracee::new(pid, None, stop);
                             return Ok(Some(tracee));
                         }
-                    }
-                    else {
+                    } else {
                         // We may see an attach-stop out-of-order, before the ptrace-event-stop
                         // which would otherwise have us mark it as `Attaching`. Since `Attaching`
                         // only exists to let us know that the next stop (i.e. this stop) is an

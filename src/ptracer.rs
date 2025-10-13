@@ -335,8 +335,8 @@ impl Tracee {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum State {
-    // Traced, no special expectation for next stop.
-    Traced,
+    // Attached, no expectations for next stop.
+    Running,
 
     // Newly-attached, expecting a SIGSTOP.
     Attaching,
@@ -404,27 +404,27 @@ impl Ptracer {
     pub fn restart(&mut self, tracee: Tracee, restart: Restart) -> Result<()> {
         let Tracee { pid, pending, .. } = tracee;
 
-        if let Some(State::Exiting) = self.tracee_state(tracee.pid) {
-            // Override restart request with a detach.
-            let r = ptrace::detach(tracee.pid, tracee.pending);
-            r.died_if_esrch(tracee.pid)?;
+        let res = match self.try_tracee_state(pid)? {
+            State::Exiting => {
+                // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
+                self.remove_tracee(pid);
 
-            // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
-            self.remove_tracee(tracee.pid);
-
-            return Ok(());
-        }
-
-        let r = match restart {
-            Restart::Step =>
-                ptrace::step(pid, pending),
-            Restart::Continue =>
-                ptrace::cont(pid, pending),
-            Restart::Syscall =>
-                ptrace::syscall(pid, pending),
+                // Override restart request with a detach.
+                ptrace::detach(pid, pending)
+            },
+            _ => {
+                match restart {
+                    Restart::Step =>
+                        ptrace::step(pid, pending),
+                    Restart::Continue =>
+                        ptrace::cont(pid, pending),
+                    Restart::Syscall =>
+                        ptrace::syscall(pid, pending),
+                }
+            },
         };
 
-        r.died_if_esrch(pid)?;
+        res.died_if_esrch(pid)?;
 
         Ok(())
     }
@@ -530,7 +530,7 @@ impl Ptracer {
             WaitStatus::Signaled(_pid, _sig, _is_core_dump) => {
                 internal_error!("consumed wait status for signaled tracee");
             },
-            WaitStatus::Stopped(pid, SIGTRAP) => {
+            WaitStatus::Stopped(pid, signal @ SIGTRAP) => {
                 let state = self.tracee_state_mut(pid);
 
                 if let Some(state @ State::Spawned) = state {
@@ -549,7 +549,7 @@ impl Ptracer {
                     let mut tracee = Tracee::new(pid, None, stop);
 
                     // Update the tracee state so subsequent traps are interpreted correctly.
-                    *state = State::Traced;
+                    *state = State::Running;
 
                     // Set global tracing options on this root tracee. Auto-attached tracees from
                     // fork, clone, and exec will inherit them.
@@ -557,7 +557,7 @@ impl Ptracer {
 
                     tracee
                 } else {
-                    let stop = Stop::SignalDelivery { signal: SIGTRAP };
+                    let stop = Stop::SignalDelivery { signal };
                     Tracee::new(pid, None, stop)
                 }
             },
@@ -565,18 +565,17 @@ impl Ptracer {
                 if signal == SIGSTOP {
                     if let Some(state) = self.tracee_state_mut(pid) {
                         if *state == State::Attaching {
-                            *state = State::Traced;
+                            *state = State::Running;
                             let stop = Stop::Attach;
                             let tracee = Tracee::new(pid, None, stop);
                             return Ok(Some(tracee));
                         }
-                    }
-                    else {
+                    } else {
                         // We may see an attach-stop out-of-order, before the ptrace-event-stop
                         // which would otherwise have us mark it as `Attaching`. Since `Attaching`
                         // only exists to let us know that the next stop (i.e. this stop) is an
-                        // attach-stop, we can directly initialize this tracee as `Traced`.
-                        self.set_tracee_state(pid, State::Traced);
+                        // attach-stop, we can directly initialize this tracee as `Running`.
+                        self.set_tracee_state(pid, State::Running);
                         let stop = Stop::Attach;
                         let tracee = Tracee::new(pid, None, stop);
                         return Ok(Some(tracee));
@@ -730,10 +729,10 @@ impl Ptracer {
                     Some(state) => {
                         match state {
                             State::Syscalling => {
-                                *state = State::Traced;
+                                *state = State::Running;
                                 Stop::SyscallExit
                             },
-                            State::Traced => {
+                            State::Running => {
                                 *state = State::Syscalling;
                                 Stop::SyscallEnter
                             },
@@ -784,6 +783,10 @@ impl Ptracer {
 
     fn tracee_state(&self, pid: Pid) -> Option<State> {
         self.tracees.get(&pid.as_raw()).copied()
+    }
+
+    fn try_tracee_state(&self, pid: Pid) -> Result<State> {
+        self.tracee_state(pid).ok_or_else(|| Error::Internal("no tracee state".into()))
     }
 
     fn set_tracee_state(&mut self, pid: Pid, state: State) {

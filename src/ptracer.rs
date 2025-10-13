@@ -404,27 +404,27 @@ impl Ptracer {
     pub fn restart(&mut self, tracee: Tracee, restart: Restart) -> Result<()> {
         let Tracee { pid, pending, .. } = tracee;
 
-        if let Some(State::Exiting) = self.tracee_state(tracee.pid) {
-            // Override restart request with a detach.
-            let r = ptrace::detach(tracee.pid, tracee.pending);
-            r.died_if_esrch(tracee.pid)?;
+        let res = match self.try_tracee_state(pid)? {
+            State::Exiting => {
+                // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
+                self.remove_tracee(pid);
 
-            // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
-            self.remove_tracee(tracee.pid);
-
-            return Ok(());
-        }
-
-        let r = match restart {
-            Restart::Step =>
-                ptrace::step(pid, pending),
-            Restart::Continue =>
-                ptrace::cont(pid, pending),
-            Restart::Syscall =>
-                ptrace::syscall(pid, pending),
+                // Override restart request with a detach.
+                ptrace::detach(pid, pending)
+            },
+            _ => {
+                match restart {
+                    Restart::Step =>
+                        ptrace::step(pid, pending),
+                    Restart::Continue =>
+                        ptrace::cont(pid, pending),
+                    Restart::Syscall =>
+                        ptrace::syscall(pid, pending),
+                }
+            },
         };
 
-        r.died_if_esrch(pid)?;
+        res.died_if_esrch(pid)?;
 
         Ok(())
     }

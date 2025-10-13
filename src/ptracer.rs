@@ -558,7 +558,7 @@ impl Ptracer {
                     tracee
                 } else {
                     let stop = Stop::SignalDelivery { signal };
-                    Tracee::new(pid, None, stop)
+                    Tracee::new(pid, signal, stop)
                 }
             },
             WaitStatus::Stopped(pid, signal) => {

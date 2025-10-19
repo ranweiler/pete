@@ -27,7 +27,6 @@ jobs:
       - name: install perf
         run: |
           uname -r
-          sudo apt install -y linux-tools-azure linux-cloud-tools-azure
           sudo apt install -y linux-tools-$(uname -r) linux-cloud-tools-$(uname -r)
           dpkg -L linux-tools-$(uname -r)
           which perf

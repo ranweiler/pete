@@ -381,12 +381,14 @@ impl Ptracer {
         Self { options, poll_delay, tracees }
     }
 
-    /// Return the default ptrace options applied to newly-spawned tracees.
+    /// Return the ptrace options applied to newly-spawned tracees.
     pub fn attach_options(&self) -> Options {
         self.options
     }
 
     /// Set the default ptrace options applied to newly-spawned tracees.
+    ///
+    /// Setting this value does not affect existing tracees.
     pub fn set_attach_options(&mut self, options: Options) {
         self.options = options;
     }

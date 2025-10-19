@@ -26,6 +26,7 @@ jobs:
           override: true
       - name: install perf
         run: |
+          set -ex -o pipefail
           uname -r
           sudo apt install -y linux-tools-$(uname -r) linux-cloud-tools-$(uname -r)
           dpkg -L linux-tools-$(uname -r)

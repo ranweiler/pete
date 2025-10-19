@@ -16,7 +16,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.76  # Test-only, via `ntest`
+          - 1.82  # Test-only, via `ntest`
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

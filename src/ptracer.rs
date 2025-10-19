@@ -382,12 +382,12 @@ impl Ptracer {
     }
 
     /// Return the default ptrace options applied to newly-spawned tracees.
-    pub fn default_options(&self) -> Options {
+    pub fn attach_options(&self) -> Options {
         self.options
     }
 
     /// Set the default ptrace options applied to newly-spawned tracees.
-    pub fn set_default_options(&mut self, options: Options) {
+    pub fn set_attach_options(&mut self, options: Options) {
         self.options = options;
     }
 

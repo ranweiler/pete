@@ -32,6 +32,7 @@ jobs:
           dpkg -L linux-tools-$(uname -r)
           which perf
           ls /usr/lib/linux-tools
+          ls /usr/lib/linux-tools/$(uname -r)
           dpkg -S perf
           cat $(which perf)
           echo $PATH

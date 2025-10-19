@@ -382,14 +382,17 @@ impl Ptracer {
     }
 
     /// Return the ptrace options applied to newly-spawned tracees.
+    ///
+    /// The options set _when the new tracee requests attach_ will be inherited by any
+    /// auto-attached children of that process.
     pub fn traceme_options(&self) -> Options {
         self.options
     }
 
     /// Set the ptrace options applied to newly-spawned tracees.
     ///
-    /// These options are _not_ automatically applied to manually-attached tracees.
-    /// Setting this value does not affect any existing tracees.
+    /// These options are _not_ automatically applied to _manually_-attached tracees.
+    /// Setting this value does not affect any existing tracees--- see [`Tracee::set_options()`].
     pub fn set_traceme_options(&mut self, options: Options) {
         self.options = options;
     }

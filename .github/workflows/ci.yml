@@ -26,7 +26,9 @@ jobs:
           override: true
       - name: install perf
         run: |
+          uname -r
           sudo apt install -y linux-tools-azure linux-cloud-tools-azure
+          sudo apt install -y linux-tools-$(uname -r)
           dpkg -L linux-tools-$(uname -r)
           which perf
       - name: download deps

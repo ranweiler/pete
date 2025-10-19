@@ -31,6 +31,8 @@ jobs:
           sudo apt install -y linux-tools-$(uname -r) linux-cloud-tools-$(uname -r)
           dpkg -L linux-tools-$(uname -r)
           which perf
+          dpkg -S perf
+          cat $(which perf)
           echo $PATH
           perf -v
       - name: download deps

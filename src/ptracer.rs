@@ -401,10 +401,12 @@ impl Ptracer {
 
     /// Set the ptrace options applied to newly-spawned tracees.
     ///
+    /// **NOTE:**: [`REQUIRED_OPTIONS`] are always set, even if unset in the passed value.
+    ///
     /// These options are _not_ automatically applied to _manually_-attached tracees.
     /// Setting this value does not affect any existing tracees--- see [`Tracee::set_options()`].
     pub fn set_traceme_options(&mut self, options: Options) {
-        self.options = options;
+        self.options = options | REQUIRED_OPTIONS;
     }
 
     /// Return the initial tracee poll delay.

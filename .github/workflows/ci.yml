@@ -24,6 +24,8 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
+      - name: install perf
+        run: sudo apt install -y linux-tools-azure
       - name: download deps
         uses: actions/download-artifact@v4.1.8
         with:

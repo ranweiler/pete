@@ -25,7 +25,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
       - name: install perf
-        run: sudo apt install -y linux-tools-azure
+        run: sudo apt install -y linux-tools-azure linux-cloud-tools-azure
       - name: download deps
         uses: actions/download-artifact@v4.1.8
         with:

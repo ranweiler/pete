@@ -16,7 +16,7 @@ jobs:
       matrix:
         rust:
           - stable
-          - 1.76  # Test-only, via `ntest`
+          - 1.82  # Test-only, via `ntest`
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -36,8 +36,9 @@ jobs:
         run: cargo test
       - name: "build examples (release)"
         run: cargo build --release --examples
-      - name: "integration test (syscalls)"
-        run: ./script/syscall-tracepoint-test ./target
+      # Temporarily disabled due to: https://bugs.launchpad.net/ubuntu/+source/linux-hwe-6.14/+bug/2117159
+      # - name: "integration test (syscalls)"
+      #   run: ./script/syscall-tracepoint-test ./target
       - name: "integration test (hw-breakpoints)"
         run: ./script/hw-breakpoint-test ./target ./nop.exe
   cross:
@@ -49,7 +50,7 @@ jobs:
           - aarch64-unknown-linux-gnu
         rust:
           - stable
-          - 1.76  # Test-only, via `ntest`
+          - 1.82  # Test-only, via `ntest`
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1

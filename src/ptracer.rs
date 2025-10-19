@@ -386,12 +386,10 @@ impl Ptracer {
         self.options
     }
 
-    /// Set the default ptrace options applied to newly-spawned tracees.
-    /// These options are _not_ automatically applied to manually-attached
-    /// tracees
+    /// Set the ptrace options applied to newly-spawned tracees.
     ///
-    ///
-    /// Setting this value does not affect existing tracees.
+    /// These options are _not_ automatically applied to manually-attached tracees.
+    /// Setting this value does not affect any existing tracees.
     pub fn set_traceme_options(&mut self, options: Options) {
         self.options = options;
     }

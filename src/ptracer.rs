@@ -369,8 +369,18 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
-const DEFAULT_OPTIONS: Options = Options::all();
 const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
+const DEFAULT_OPTIONS: Options = Options::all();
+
+/// These options are required for internal tracee state management.
+/// These are:
+/// - [`PTRACE_O_TRACEEXEC`](Options::PTRACE_O_TRACEEXEC)
+/// - [`PTRACE_O_TRACEEXIT`](Options::PTRACE_O_TRACEEXIT)
+/// - [`PTRACE_O_TRACESYSGOOD`](Options::PTRACE_O_TRACESYSGOOD)
+pub const REQUIRED_OPTIONS: Options = Options::empty()
+    .union(Options::PTRACE_O_TRACEEXEC)
+    .union(Options::PTRACE_O_TRACEEXIT)
+    .union(Options::PTRACE_O_TRACESYSGOOD);
 
 impl Ptracer {
     pub fn new() -> Self {

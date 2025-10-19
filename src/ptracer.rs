@@ -369,11 +369,12 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
+const DEFAULT_OPTIONS: Options = Options::all();
 const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
 
 impl Ptracer {
     pub fn new() -> Self {
-        let options = Options::all();
+        let options = DEFAULT_OPTIONS;
         let poll_delay = DEFAULT_POLL_DELAY;
         let tracees = BTreeMap::new();
 

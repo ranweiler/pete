@@ -369,24 +369,31 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
+const DEFAULT_OPTIONS: Options = Options::all();
 const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
 
 impl Ptracer {
     pub fn new() -> Self {
-        let options = Options::all();
+        let options = DEFAULT_OPTIONS;
         let poll_delay = DEFAULT_POLL_DELAY;
         let tracees = BTreeMap::new();
 
         Self { options, poll_delay, tracees }
     }
 
-    /// Return the default ptrace options applied to newly-spawned tracees.
-    pub fn default_options(&self) -> Options {
+    /// Return the ptrace options applied to newly-spawned tracees.
+    ///
+    /// The options set _when the new tracee requests attach_ will be inherited by any
+    /// auto-attached children of that process.
+    pub fn traceme_options(&self) -> Options {
         self.options
     }
 
-    /// Set the default ptrace options applied to newly-spawned tracees.
-    pub fn set_default_options(&mut self, options: Options) {
+    /// Set the ptrace options applied to newly-spawned tracees.
+    ///
+    /// These options are _not_ automatically applied to _manually_-attached tracees.
+    /// Setting this value does not affect any existing tracees--- see [`Tracee::set_options()`].
+    pub fn set_traceme_options(&mut self, options: Options) {
         self.options = options;
     }
 

@@ -19,7 +19,7 @@ do_test() {
 
     # Convert the binary perf data to text. This text will be formatted as as specified in
     # the files `/sys/kernel/debug/tracing/events/raw_syscalls/sys_{enter,exit}/format`.
-    sudo -E perf script -i perf.data > perf.log
+    sudo perf script -i perf.data > perf.log
 
     # Filter out perf events from the `pete` tracer.
     grep -v '^[[:space:]]*syscalls' perf.log > perf-target.log

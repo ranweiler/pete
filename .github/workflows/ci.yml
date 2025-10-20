@@ -35,7 +35,7 @@ jobs:
       - name: install nextest
         uses: taiki-e/install-action@nextest
       - name: test (release)
-        run: cargo nextest run -r -P ci
+        run: cargo nextest run -r -P ci --color always
       - name: "build examples (release)"
         run: cargo build --release --examples
       # Temporarily disabled due to: https://bugs.launchpad.net/ubuntu/+source/linux-hwe-6.14/+bug/2117159

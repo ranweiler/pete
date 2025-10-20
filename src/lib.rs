@@ -27,7 +27,7 @@ pub mod x86;
 pub use error::Error;
 
 #[doc(inline)]
-pub use ptracer::{Pid, Ptracer, Restart, Siginfo, Signal, Stop, Tracee};
+pub use ptracer::{Options, Pid, Ptracer, Restart, Siginfo, Signal, Stop, Tracee};
 
 #[cfg(target_arch = "x86_64")]
 #[doc(inline)]

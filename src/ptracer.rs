@@ -145,7 +145,10 @@ impl Tracee {
     }
 
     /// Set custom tracing options on the tracee.
+    ///
+    /// **NOTE:** [`REQUIRED_OPTIONS`] are always set, even if unset in the passed value.
     pub fn set_options(&mut self, options: Options) -> Result<()> {
+        let options = options | REQUIRED_OPTIONS;
         Ok(ptrace::setoptions(self.pid, options).died_if_esrch(self.pid)?)
     }
 
@@ -369,8 +372,18 @@ pub struct Ptracer {
     tracees: BTreeMap<i32, State>,
 }
 
-const DEFAULT_OPTIONS: Options = Options::all();
 const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
+const DEFAULT_OPTIONS: Options = Options::all();
+
+/// Options required for internal tracee state management.
+/// These are:
+/// - [`PTRACE_O_TRACEEXEC`](Options::PTRACE_O_TRACEEXEC)
+/// - [`PTRACE_O_TRACEEXIT`](Options::PTRACE_O_TRACEEXIT)
+/// - [`PTRACE_O_TRACESYSGOOD`](Options::PTRACE_O_TRACESYSGOOD)
+pub const REQUIRED_OPTIONS: Options = Options::empty()
+    .union(Options::PTRACE_O_TRACEEXEC)
+    .union(Options::PTRACE_O_TRACEEXIT)
+    .union(Options::PTRACE_O_TRACESYSGOOD);
 
 impl Ptracer {
     pub fn new() -> Self {
@@ -391,10 +404,12 @@ impl Ptracer {
 
     /// Set the ptrace options applied to newly-spawned tracees.
     ///
+    /// **NOTE:**: [`REQUIRED_OPTIONS`] are always set, even if unset in the passed value.
+    ///
     /// These options are _not_ automatically applied to _manually_-attached tracees.
     /// Setting this value does not affect any existing tracees--- see [`Tracee::set_options()`].
     pub fn set_traceme_options(&mut self, options: Options) {
-        self.options = options;
+        self.options = options | REQUIRED_OPTIONS;
     }
 
     /// Return the initial tracee poll delay.

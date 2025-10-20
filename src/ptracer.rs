@@ -145,6 +145,8 @@ impl Tracee {
     }
 
     /// Set custom tracing options on the tracee.
+    ///
+    /// **NOTE:** [`REQUIRED_OPTIONS`] are always set, even if unset in the passed value.
     pub fn set_options(&mut self, options: Options) -> Result<()> {
         let options = options | REQUIRED_OPTIONS;
         Ok(ptrace::setoptions(self.pid, options).died_if_esrch(self.pid)?)

@@ -24,6 +24,7 @@ fn test_tracee_required_options() -> Result<()> {
     while let Some(mut tracee) = tracer.wait()? {
         events.push(tracee);
 
+        // Set one user-provided option to witness that they are preserved.
         let opts = Options::PTRACE_O_TRACEFORK;
         tracee.set_options(opts)?;
 

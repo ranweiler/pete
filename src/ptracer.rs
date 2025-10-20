@@ -352,6 +352,10 @@ enum State {
 
     // Stopped mid-exit (but not yet reaped) and pending detach.
     Exiting,
+
+    // Detach-restarted after ptrace-exit (PTRACE_EVENT_EXIT), but pending confirmed termination
+    // via a WIFEXITED or WIFSIGNALED status. Could be non-terminally exec-exited.
+    Exited,
 }
 
 /// Tracer for a Linux process.
@@ -428,8 +432,8 @@ impl Ptracer {
 
         let res = match self.try_tracee_state(pid)? {
             State::Exiting => {
-                // We must not wait on this PID again, or we will reap it and break `std::process::Child`.
-                self.remove_tracee(pid);
+                // Mark PID as _tentatively_ terminated. See `prune_terminated_tracee()`.
+                self.set_tracee_state(pid, State::Exited);
 
                 // Override restart request with a detach.
                 ptrace::detach(pid, pending)
@@ -486,11 +490,22 @@ impl Ptracer {
     }
 
     // Poll tracees for a `wait(2)` status change.
-    fn poll_tracees(&self) -> Result<Option<WaitStatus>> {
+    fn poll_tracees(&mut self) -> Result<Option<WaitStatus>> {
         let flag = WaitPidFlag::__WALL | WaitPidFlag::WNOHANG;
 
-        for tracee in self.tracees.keys().copied() {
+        for (tracee, state) in self.tracees.clone().into_iter() {
             let pid = Pid::from_raw(tracee);
+
+            if state == State::Exited {
+                debug!("checking for termination of exited tracee: {pid}");
+
+                let removed = self.prune_terminated_tracee(pid)?;
+                if removed {
+                    // PID will be reaped on next wait(2), so don't poll it below.
+                    // We want to save the status for `Child::wait()`.
+                    continue;
+                }
+            }
 
             match wait::waitpid(pid, Some(flag)) {
                 Ok(WaitStatus::StillAlive) => {
@@ -514,6 +529,68 @@ impl Ptracer {
 
         // No tracee changed state.
         Ok(None)
+    }
+
+    // Peek at the wait status of an exited tracee, without consuming it. If the tracee
+    // is truly terminating, remove it from the set of known tracees.
+    //
+    // Returns `true` iff the tracee was removed from the known tracee set.
+    fn prune_terminated_tracee(&mut self, pid: Pid) -> Result<bool> {
+        use nix::sys::wait::Id;
+
+        // Peek wait() status without consuming.
+        let flags = WaitPidFlag::WEXITED | WaitPidFlag::WNOWAIT;
+        let id = Id::Pid(pid);
+
+        let removed = match wait::waitid(id, flags) {
+            Ok(status @ (WaitStatus::Exited(..) | WaitStatus::Signaled(..))) => {
+                debug!(?status, "saw termination of exited tracee");
+
+                // The exited thread is ready to be reaped on next wait(2). We can treat it as
+                // reaped, and needn't peek it for potential exec()-resurrection.
+                //
+                // We also must not poll it: this will consume its status and reap it, which
+                // breaks `Child::wait()`. Instead, prune it from our tracee set.
+                self.remove_tracee(pid);
+
+                true
+            },
+            Ok(status) => {
+                debug!(?status, "non-termination status for exited tracee, resetting");
+
+                // We have a new, non-termination status. We must be in a situation like
+                // an off-thread exec(), where the exec()-ing thread assumes the TID of
+                // the thread group leader and seems to be resurrected.
+                //
+                // From the ptrace(2) manual:
+                //
+                //   The tracer can't assume that the tracee always ends its life by
+                //   reporting WIFEXITED(status) or WIFSIGNALED(status); there are
+                //   cases where this does not occur.  For example, if a thread other
+                //   than thread group leader does an execve(2), it disappears; its PID
+                //   will never be seen again, and any subsequent ptrace stops will be
+                //   reported under the thread group leader's PID.
+                //
+                // This is the situation we have detected.
+                //
+                // Reset the state of this PID to `Running` so we'll be able to observe
+                // subsequent events normally.
+                self.set_tracee_state(pid, State::Running);
+                false
+            },
+            Err(errno) if errno == Errno::ECHILD => {
+                debug!("ECHILD for exited tracee, assuming killed");
+                self.remove_tracee(pid);
+                true
+            },
+            Err(errno) => {
+                debug!(%errno, "non-ECHILD err for exited tracee");
+                self.remove_tracee(pid);
+                return Err(errno.into())
+            },
+        };
+
+        Ok(removed)
     }
 
     /// Wait for some running tracee process to stop.
@@ -777,7 +854,13 @@ impl Ptracer {
                             State::Exiting => {
                                 // If the tracee was in the `Exiting` state, we should have detached on
                                 // the next restart request.
-                                internal_error!("unexpected event for detached tracee")
+                                internal_error!("unexpected event for exiting tracee")
+                            },
+                            State::Exited => {
+                                // If the tracee was in the `Exited` state, we should only poll it with
+                                // `WNOWAIT` until we either observe a terminal wait status or a new ptrace
+                                // event that indicates we should reset the state to `Running`.
+                                internal_error!("unexpected event for exited tracee")
                             },
                         }
                     },

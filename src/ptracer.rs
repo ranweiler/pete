@@ -373,7 +373,7 @@ pub struct Ptracer {
 const DEFAULT_POLL_DELAY: Duration = Duration::from_micros(1);
 const DEFAULT_OPTIONS: Options = Options::all();
 
-/// These options are required for internal tracee state management.
+/// Options required for internal tracee state management.
 /// These are:
 /// - [`PTRACE_O_TRACEEXEC`](Options::PTRACE_O_TRACEEXEC)
 /// - [`PTRACE_O_TRACEEXIT`](Options::PTRACE_O_TRACEEXIT)

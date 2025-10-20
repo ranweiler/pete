@@ -12,6 +12,9 @@ include = [
     "src/",
 ]
 
+[features]
+test-programs = []
+
 [dependencies]
 libc = "0.2.99"
 nix = { version = "0.30.1", features = ["process", "ptrace"] }

@@ -210,3 +210,34 @@ fn test_wait_untraced_child() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(feature = "test-programs")]
+#[test]
+#[timeout(2000)]
+fn test_exec_off_leader() -> Result<()> {
+    let cmd = Command::new("test-programs/exec-off-leader/target/release/exec-off-leader");
+    let mut tracer = Ptracer::new();
+    let mut tracee = tracer.spawn(cmd)?;
+
+    let mut events = vec![];
+
+    while let Some(tracee) = tracer.wait()? {
+        events.push(tracee);
+        tracer.restart(tracee, Restart::Continue)?;
+    }
+
+    let status = tracee.wait()?;
+    assert!(status.success());
+    assert_eq!(status.code(), Some(0));
+
+    assert_equivalent(&events, &[
+        event!(0, SyscallExit),
+        event!(0, Clone { new: pid!(1) }, SIGTRAP),
+        event!(1, Attach),
+        event!(0, Exiting { exit_code: 0}, SIGTRAP),
+        event!(0, Exec { old: pid!(1) }, SIGTRAP),  // PID 1 becomes leader
+        event!(0, Exiting { exit_code: 0 }, SIGTRAP),
+    ]);
+
+    Ok(())
+}

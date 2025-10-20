@@ -146,6 +146,7 @@ impl Tracee {
 
     /// Set custom tracing options on the tracee.
     pub fn set_options(&mut self, options: Options) -> Result<()> {
+        let options = options | REQUIRED_OPTIONS;
         Ok(ptrace::setoptions(self.pid, options).died_if_esrch(self.pid)?)
     }
 

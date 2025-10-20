@@ -33,7 +33,7 @@ jobs:
       - name: build (debug, examples)
         run: cargo build --examples
       - name: install nextest
-        uses: taiki-e/install-actions@nextest
+        uses: taiki-e/install-action@nextest
       - name: test (release)
         run: cargo nextest run -r -P ci
       - name: "build examples (release)"

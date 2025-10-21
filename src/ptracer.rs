@@ -539,7 +539,7 @@ impl Ptracer {
         use nix::sys::wait::Id;
 
         // Peek wait() status without consuming.
-        let flags = WaitPidFlag::WEXITED | WaitPidFlag::WNOWAIT;
+        let flags = WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT;
         let id = Id::Pid(pid);
 
         let removed = match wait::waitid(id, flags) {
@@ -553,6 +553,10 @@ impl Ptracer {
                 // breaks `Child::wait()`. Instead, prune it from our tracee set.
                 self.remove_tracee(pid);
 
+                true
+            },
+            Ok(WaitStatus::StillAlive) => {
+                // No pending status of any sort. Try again later.
                 true
             },
             Ok(status) => {

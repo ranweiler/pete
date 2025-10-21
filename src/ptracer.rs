@@ -557,7 +557,7 @@ impl Ptracer {
             },
             Ok(WaitStatus::StillAlive) => {
                 // No pending status of any sort. Try again later.
-               false
+                false
             },
             Ok(status) => {
                 debug!(?status, "non-termination status for exited tracee, resetting");

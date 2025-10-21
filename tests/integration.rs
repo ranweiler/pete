@@ -215,7 +215,10 @@ fn test_wait_untraced_child() -> Result<()> {
 #[test]
 #[timeout(2000)]
 fn test_exec_off_leader() -> Result<()> {
-    let cmd = Command::new("test-programs/exec-off-leader/target/release/exec-off-leader");
+    let test_programs_dir = std::env::var("PETE_TEST_PROGRAMS")?;
+    let exe = std::path::Path::new(&test_programs_dir).join("exec-off-leader");
+
+    let cmd = Command::new(exe);
     let mut tracer = Ptracer::new();
     let mut tracee = tracer.spawn(cmd)?;
 

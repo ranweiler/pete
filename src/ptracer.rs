@@ -491,7 +491,7 @@ impl Ptracer {
 
     // Poll tracees for a `wait(2)` status change.
     fn poll_tracees(&mut self) -> Result<Option<WaitStatus>> {
-        let flag = WaitPidFlag::__WALL | WaitPidFlag::WNOHANG;
+        let flags = WaitPidFlag::__WALL | WaitPidFlag::WNOHANG;
 
         for (tracee, state) in self.tracees.clone().into_iter() {
             let pid = Pid::from_raw(tracee);
@@ -507,7 +507,7 @@ impl Ptracer {
                 }
             }
 
-            match wait::waitpid(pid, Some(flag)) {
+            match wait::waitpid(pid, Some(flags)) {
                 Ok(WaitStatus::StillAlive) => {
                     // Alive, no state change. Check remaining tracees.
                     continue;

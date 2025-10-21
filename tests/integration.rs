@@ -237,8 +237,11 @@ fn test_exec_off_leader() -> Result<()> {
         event!(0, SyscallExit),
         event!(0, Clone { new: pid!(1) }, SIGTRAP),
         event!(1, Attach),
+        event!(0, Clone { new: pid!(2) }, SIGTRAP),
+        event!(2, Attach),
         event!(0, Exiting { exit_code: 0}, SIGTRAP),
-        event!(0, Exec { old: pid!(1) }, SIGTRAP),  // PID 1 becomes leader
+        event!(1, Exiting { exit_code: 0}, SIGTRAP),
+        event!(0, Exec { old: pid!(2) }, SIGTRAP),  // PID 2 becomes leader
         event!(0, Exiting { exit_code: 0 }, SIGTRAP),
     ]);
 

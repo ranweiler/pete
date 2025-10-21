@@ -24,12 +24,18 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - name: download deps
+      - name: download test programs
         uses: actions/download-artifact@v4.1.8
         with:
-          name: nop.exe
-      - name: set up deps
-        run: chmod +x nop.exe
+          path: test-programs
+          merge-multiple: true
+      - name: list downloaded artifacts
+        run: ls test-programs
+      - name: set up test programs
+        run: |
+          cd test-programs
+          chmod +x nop.exe
+          chmod +x exec-off-leader
       - name: build (debug, examples)
         run: cargo build --examples
       - name: install nextest
@@ -42,7 +48,7 @@ jobs:
       # - name: "integration test (syscalls)"
       #   run: ./script/syscall-tracepoint-test ./target
       - name: "integration test (hw-breakpoints)"
-        run: ./script/hw-breakpoint-test ./target ./nop.exe
+        run: ./script/hw-breakpoint-test ./target ./test-programs/nop.exe
   cross:
     name: Cross-compile (${{ matrix.rust }}-${{ matrix.target }})
     runs-on: ubuntu-latest

@@ -27,13 +27,13 @@ jobs:
       - name: download test programs
         uses: actions/download-artifact@v4.1.8
         with:
-          path: test-programs
+          path: artifacts
           merge-multiple: true
       - name: list downloaded artifacts
-        run: ls test-programs
+        run: ls artifacts
       - name: set up test programs
         run: |
-          cd test-programs
+          cd artifacts
           chmod +x nop.exe
           chmod +x exec-off-leader
       - name: build (debug, examples)
@@ -42,7 +42,7 @@ jobs:
         uses: taiki-e/install-action@nextest
       - name: test (release)
         run: |
-          export PETE_TEST_PROGRAMS=./test-programs
+          export PETE_TEST_PROGRAMS=./artifacts
           cargo nextest run -r -P ci --color always -F test-programs
       - name: "build examples (release)"
         run: cargo build --release --examples
@@ -50,7 +50,7 @@ jobs:
       # - name: "integration test (syscalls)"
       #   run: ./script/syscall-tracepoint-test ./target
       - name: "integration test (hw-breakpoints)"
-        run: ./script/hw-breakpoint-test ./target ./test-programs/nop.exe
+        run: ./script/hw-breakpoint-test ./target ./artifacts/nop.exe
   cross:
     name: Cross-compile (${{ matrix.rust }}-${{ matrix.target }})
     runs-on: ubuntu-latest

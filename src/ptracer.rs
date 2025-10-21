@@ -499,8 +499,8 @@ impl Ptracer {
             if state == State::Exited {
                 debug!("checking for termination of exited tracee: {pid}");
 
-                let removed = self.prune_terminated_tracee(pid)?;
-                if removed {
+                let ready = self.prune_terminated_tracee(pid)?;
+                if !ready {
                     // PID will be reaped on next wait(2), so don't poll it below.
                     // We want to save the status for `Child::wait()`.
                     continue;
@@ -534,15 +534,15 @@ impl Ptracer {
     // Peek at the wait status of an exited tracee, without consuming it. If the tracee
     // is truly terminating, remove it from the set of known tracees.
     //
-    // Returns `true` iff the tracee was removed from the known tracee set.
+    // Returns `true` iff the tracee has a wait(2) status ready and safe for consumption.
     fn prune_terminated_tracee(&mut self, pid: Pid) -> Result<bool> {
         use nix::sys::wait::Id;
 
         // Peek wait() status without consuming.
-        let flags = WaitPidFlag::WEXITED | WaitPidFlag::WNOWAIT;
+        let flags = WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT;
         let id = Id::Pid(pid);
 
-        let removed = match wait::waitid(id, flags) {
+        let ready = match wait::waitid(id, flags) {
             Ok(status @ (WaitStatus::Exited(..) | WaitStatus::Signaled(..))) => {
                 debug!(?status, "saw termination of exited tracee");
 
@@ -553,7 +553,11 @@ impl Ptracer {
                 // breaks `Child::wait()`. Instead, prune it from our tracee set.
                 self.remove_tracee(pid);
 
-                true
+                false
+            },
+            Ok(WaitStatus::StillAlive) => {
+                // No pending status of any sort. Try again later.
+                false
             },
             Ok(status) => {
                 debug!(?status, "non-termination status for exited tracee, resetting");
@@ -576,12 +580,12 @@ impl Ptracer {
                 // Reset the state of this PID to `Running` so we'll be able to observe
                 // subsequent events normally.
                 self.set_tracee_state(pid, State::Running);
-                false
+                true
             },
             Err(errno) if errno == Errno::ECHILD => {
                 debug!("ECHILD for exited tracee, assuming killed");
                 self.remove_tracee(pid);
-                true
+                false
             },
             Err(errno) => {
                 debug!(%errno, "non-ECHILD err for exited tracee");
@@ -590,7 +594,7 @@ impl Ptracer {
             },
         };
 
-        Ok(removed)
+        Ok(ready)
     }
 
     /// Wait for some running tracee process to stop.

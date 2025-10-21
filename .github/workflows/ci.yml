@@ -71,9 +71,15 @@ jobs:
       - uses: actions/checkout@v2
       - name: build test-programs
         run: cd test-programs && ./build-all.sh
-      - name: upload test-programs
+      - name: upload test-programs (nop)
         uses: actions/upload-artifact@v4.4.0
         with:
           name: nop.exe
           path: ./test-programs/nop/nop.exe
+          retention-days: 1
+      - name: upload test-programs (exec-off-leader)
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: exec-off-leader
+          path: ./test-programs/exec-off-leader/target/release/exec-off-leader
           retention-days: 1
